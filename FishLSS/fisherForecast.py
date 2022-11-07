@@ -1,7 +1,7 @@
-from headers import *
-from twoPoint import *
-from twoPointNoise import *
-from castorina import castorinaBias, castorinaPn
+from .headers import *
+from .twoPoint import *
+from .twoPointNoise import *
+from .castorina import castorinaBias, castorinaPn
 from multiprocessing import Pool
 from functools import partial
 import os, json

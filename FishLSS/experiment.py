@@ -1,4 +1,4 @@
-from headers import *
+from .headers import *
 import types
 
 

@@ -1,7 +1,6 @@
-from headers import *
-from twoPoint import *
-import twoPoint
-from castorina import castorinaBias, castorinaPn
+from .headers import *
+from .twoPoint import *
+from .castorina import castorinaBias, castorinaPn
 import scipy
 
 

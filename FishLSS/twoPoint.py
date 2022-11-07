@@ -1,10 +1,10 @@
-from headers import *
+from .headers import *
 from velocileptors.LPT.cleft_fftw import CLEFT
-from bao_recon.zeldovich_rsd_recon_fftw import Zeldovich_Recon
+from .bao_recon.zeldovich_rsd_recon_fftw import Zeldovich_Recon
 from velocileptors.LPT.lpt_rsd_fftw import LPT_RSD
 from scipy.signal import savgol_filter
-from castorina import castorinaBias, castorinaPn
-from twoPointNoise import *
+from .castorina import castorinaBias, castorinaPn
+from .twoPointNoise import *
 from scipy.integrate import simps
 from math import ceil
 from scipy.interpolate import InterpolatedUnivariateSpline as Spline

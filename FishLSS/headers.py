@@ -10,19 +10,19 @@ from timeit import timeit
 from time import time
 from copy import copy
 from classy import Class
-from experiment import *
-from fisherForecast import *
+from .experiment import *
+from .fisherForecast import *
 import sys
 from velocileptors.LPT.lpt_rsd_fftw import LPT_RSD
 import scipy
 
-from bao_recon.loginterp import loginterp
+from .bao_recon.loginterp import loginterp
 import time
 from scipy.special import hyp2f1, hyperu, gamma
-from bao_recon.spherical_bessel_transform_fftw import SphericalBesselTransform
-from bao_recon.qfuncfft_recon import QFuncFFT
+from .bao_recon.spherical_bessel_transform_fftw import SphericalBesselTransform
+from .bao_recon.qfuncfft_recon import QFuncFFT
 import pyfftw
-from bao_recon.zeldovich_rsd_recon_fftw import Zeldovich_Recon
+from .bao_recon.zeldovich_rsd_recon_fftw import Zeldovich_Recon
 
 ##################################################################################
 # make plots prettier
@@ -37,7 +37,7 @@ rc('legend',**{'fontsize':'18'})
 
 matplotlib.rcParams['axes.linewidth'] = 3
 matplotlib.rcParams['axes.labelsize'] = 30
-matplotlib.rcParams['xtick.labelsize'] = 25 
+matplotlib.rcParams['xtick.labelsize'] = 25
 matplotlib.rcParams['ytick.labelsize'] = 25
 matplotlib.rcParams['legend.fontsize'] = 25
 #matplotlib.rcParams['legend.title_fontsize'] = 25

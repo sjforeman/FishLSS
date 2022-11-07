@@ -7,9 +7,9 @@ import sys
 from math import ceil
 
 # Import revelant packages
-from headers import *
-from twoPoint import *
-from twoPointNoise import *
+from FishLSS.headers import *
+from FishLSS.twoPoint import *
+from FishLSS.twoPointNoise import *
 
 
 # Set the default cosmological parameters.
