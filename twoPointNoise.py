@@ -3,7 +3,6 @@ from twoPoint import *
 import twoPoint
 from castorina import castorinaBias,castorinaPn
 import scipy
-from input.reio_hist import Xhi
 
 
 '''
@@ -272,11 +271,13 @@ def get_Tb(fishcast,z):
        Ez = fishcast.cosmo_fid.Hubble(z)/fishcast.cosmo_fid.Hubble(0)
        Tb = 188e-3*h/Ez*Ohi*(1+z)**2
        return Tb
+   else:
+       raise NotImplementedError("T_b at z>6 is not implemented! (Requires X_HI(z))")
    omb = fishcast.params_fid['omega_b']
    omm = fishcast.params_fid['omega_cdm'] + omb
    result = 28e-3 * ((1+z)*0.14/10/omm)**0.5
    result *= omb/0.022
-   return result * (1-Xhi(z))
+   return result
     
 
 def HI_therm(fishcast, z, effic=0.7, hexpack=True, skycoupling=0.9, 
