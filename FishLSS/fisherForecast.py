@@ -1105,14 +1105,21 @@ class fisherForecast(object):
         return wedge * kparallel_constraint
 
     def compute_derivatives(
-        self, five_point=True, parameters=None, z=None, overwrite=False
+        self, five_point=True, parameters=None, z=None, overwrite=False, verbose=False
     ):
         """
         Calculates all the derivatives and saves them to the
         output/forecast name/derivatives directory
         """
         if parameters is not None:
+            if verbose:
+                print(f"Computing derivatives for {len(parameters)} parameters:")
+                print("\t", parameters)
+
             for i, p in enumerate(parameters):
+                if verbose:
+                    print(f"Computing for parameter {i}: {p}")
+
                 if p == "fEDE":
                     filename = (
                         "fEDE_"
@@ -1141,9 +1148,19 @@ class fisherForecast(object):
                 else:
                     continue
             return
+
         zs = self.experiment.zcenters
+        if verbose:
+            print(
+                f"Computing derivatives for {len(zs)} zs "
+                f"and {len(self.marg_params)} parameters"
+            )
+
         for z in zs:
             for marg_param in self.marg_params:
+                if verbose:
+                    print(f"Computing for z = {z} and parameter {marg_param}")
+
                 if marg_param == "fEDE":
                     filename = (
                         "fEDE_"
