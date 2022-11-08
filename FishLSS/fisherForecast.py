@@ -43,6 +43,7 @@ class fisherForecast(object):
         N2cut=0.2,
         setup=True,
         overwrite=False,
+        verbose=False
     ):
 
         self.kmin = kmin
@@ -96,6 +97,7 @@ class fisherForecast(object):
             if not os.path.exists(directory):
                 os.mkdir(directory)
 
+        if verbose: print("Setting parameters...")
         if (cosmo is None) or (experiment is None):
             print("Attempted to create a forecast without an experiment or cosmology.")
         else:
@@ -106,8 +108,11 @@ class fisherForecast(object):
         self.create_json_summary()
 
         if setup or overwrite:
+            if verbose: print("Computing fiducial P(k)...")
             self.compute_fiducial_Pk(overwrite=overwrite)
+            if verbose: print("Computing fiducial C_ell...")
             self.compute_fiducial_Cl(overwrite=overwrite)
+            if verbose: print("Computing fiducial P_rec(k)...")
             self.compute_fiducial_Precon(overwrite=overwrite)
 
     def set_experiment_and_cosmology_specific_parameters(
