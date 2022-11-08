@@ -2,10 +2,11 @@ from .headers import *
 from .twoPoint import *
 from .twoPointNoise import *
 from .castorina import castorinaBias, castorinaPn
-from multiprocessing import Pool
 from functools import partial
 import os, json
 from os.path import exists
+
+from caput import mpiutil
 
 
 class fisherForecast(object):
@@ -1105,12 +1106,32 @@ class fisherForecast(object):
         return wedge * kparallel_constraint
 
     def compute_derivatives(
-        self, five_point=True, parameters=None, z=None, overwrite=False, verbose=False
+        self,
+        five_point=True,
+        parameters=None,
+        z=None,
+        overwrite=False,
+        verbose=False,
+        n_partitions=None,
+        partition=None,
     ):
+        """Compute and save derivatives.
+
+        Derivatives are saved to the output/forecast_name/derivatives directory.
+
+        If n_partitions and partition are specified, compute only a subset of the
+        derivatives, of size ~ n_partitions/(n_parameters * n_z).
         """
-        Calculates all the derivatives and saves them to the
-        output/forecast name/derivatives directory
-        """
+
+        # If partitions not specified, use 1 partition
+        if n_partitions is None:
+            n_partitions = 1
+            partition = 0
+        else:
+            if partition is None:
+                raise InputError("Need to specify partition if n_partitions is set!")
+
+        # TODO: implement partitioning for parameters!=None branch
         if parameters is not None:
             if verbose:
                 print(f"Computing derivatives for {len(parameters)} parameters:")
@@ -1149,47 +1170,56 @@ class fisherForecast(object):
                     continue
             return
 
+        # Make list of (z_index, par_index), and find the partition we'll compute for
         zs = self.experiment.zcenters
+        marg_params = self.marg_params
+        z_par_multidx = np.array(
+            [[i, j] for i in range(len(zs)) for j in range(len(marg_params))]
+        )
+        z_par_multidx = mpiutil.partition_list(z_par_multidx, partition, n_partitions)
+
         if verbose:
             print(
-                f"Computing derivatives for {len(zs)} zs "
-                f"and {len(self.marg_params)} parameters"
+                f"Partition: {partition}: computing {len(z_par_multidx)} derivatives"
             )
 
-        for z in zs:
-            for marg_param in self.marg_params:
-                if verbose:
-                    print(f"Computing for z = {z} and parameter {marg_param}")
+        # Loop through each (z,p) pair in partition
+        for idxi, idx in enumerate(z_par_multidx):
+            z, p = zs[idx[0]], marg_params[idx[1]]
 
-                if marg_param == "fEDE":
-                    filename = (
-                        "fEDE_"
-                        + str(int(1000.0 * self.log10z_c))
-                        + "_"
-                        + str(int(100 * z))
-                        + ".txt"
-                    )
-                elif marg_param == "A_lin":
-                    filename = (
-                        "A_lin_"
-                        + str(int(100.0 * self.omega_lin))
-                        + "_"
-                        + str(int(100 * z))
-                        + ".txt"
-                    )
-                else:
-                    filename = marg_param + "_" + str(int(100 * z)) + ".txt"
-                folder = "/derivatives/"
-                if self.recon:
-                    folder = "/derivatives_recon/"
-                fname = "output/" + self.name + folder + filename
-                if not exists(fname) or overwrite:
-                    dPdp = self.compute_dPdp(
-                        param=marg_param, z=z, five_point=five_point
-                    )
-                    np.savetxt(fname, dPdp)
-                else:
-                    continue
+            if verbose:
+                print(
+                    f"Partition {partition}: Computing {idxi}/{len(z_par_multidx)}:"
+                    f" z = {z}, {p}"
+                )
+
+            if p == "fEDE":
+                filename = (
+                    "fEDE_"
+                    + str(int(1000.0 * self.log10z_c))
+                    + "_"
+                    + str(int(100 * z))
+                    + ".txt"
+                )
+            elif p == "A_lin":
+                filename = (
+                    "A_lin_"
+                    + str(int(100.0 * self.omega_lin))
+                    + "_"
+                    + str(int(100 * z))
+                    + ".txt"
+                )
+            else:
+                filename = p + "_" + str(int(100 * z)) + ".txt"
+            folder = "/derivatives/"
+            if self.recon:
+                folder = "/derivatives_recon/"
+            fname = "output/" + self.name + folder + filename
+            if not exists(fname) or overwrite:
+                dPdp = self.compute_dPdp(param=p, z=z, five_point=five_point)
+                np.savetxt(fname, dPdp)
+            else:
+                continue
 
     def compute_Cl_derivatives(self, five_point=True, overwrite=False):
         """
