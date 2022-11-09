@@ -426,7 +426,7 @@ def HI_therm(
     Tground=300.0,
     omtcoupling=0.9,
     Tampl=50.0,
-    old=False,
+    old=True,
 ):
     """
     Adapted from https://github.com/slosar/PUMANoise.
