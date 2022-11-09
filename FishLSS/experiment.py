@@ -28,7 +28,7 @@ class experiment(object):
         Roman=False,  #
         custom_n=False,  #
         custom_b=False,  #
-        pesimistic=False,  # HI survey: specifies the k-wedge
+        pessimistic=False,  # HI survey: specifies the k-wedge
         Ndetectors=256**2.0,  # HI survey: number of detectors
         fill_factor=0.5,  # HI survey: the array's fill factor
         tint=5,  # HI survey: oberving time [years]
@@ -73,7 +73,7 @@ class experiment(object):
         self.tint = tint
         self.sigv = sigv
         self.D = D
-        if pesimistic:
+        if pessimistic:
             self.N_w = 3.0
             self.kparallel_min = 0.1
         else:
