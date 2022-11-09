@@ -293,7 +293,7 @@ class fisherForecast(object):
         zs = self.experiment.zcenters
         bs = list([float(compute_b(self, z)) for z in zs])
         if self.experiment.HI:
-            ns = list([float(castorinaPn(z)) for z in zs])
+            ns = list([1/float(castorinaPn(z)) for z in zs])
         else:
             ns = list([float(compute_n(self, z)) for z in zs])
 
