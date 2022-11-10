@@ -306,6 +306,7 @@ class fisherForecast(object):
             "fsky": self.experiment.fsky,
             "CLASS default parameters": self.params_fid,
             "HI": self.experiment.HI,
+            "pessimistic": self.experiment.pessimistic,
         }
 
         with open("output/" + self.name + "/" + "summary.json", "w") as write_file:

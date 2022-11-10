@@ -73,6 +73,7 @@ class experiment(object):
         self.tint = tint
         self.sigv = sigv
         self.D = D
+        self.pessimistic = pessimistic
         if pessimistic:
             self.N_w = 3.0
             self.kparallel_min = 0.1
