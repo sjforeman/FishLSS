@@ -305,6 +305,7 @@ class fisherForecast(object):
             "Number density in each bin": ns,
             "fsky": self.experiment.fsky,
             "CLASS default parameters": self.params_fid,
+            "HI": self.experiment.HI,
         }
 
         with open("output/" + self.name + "/" + "summary.json", "w") as write_file:
