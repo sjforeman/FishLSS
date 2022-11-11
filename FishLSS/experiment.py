@@ -1,5 +1,7 @@
-from .headers import *
 import types
+
+from .headers import *
+from .castorina import castorinaPn
 
 
 class experiment(object):
@@ -34,7 +36,7 @@ class experiment(object):
         tint=5,  # HI survey: oberving time [years]
         sigv=100,  # comoving velocity dispersion for FoG contribution [km/s]
         D=6,
-        HI_ideal=False,
+        HI_shot_model="castorina",
     ):
 
         self.zmin = zmin
@@ -68,6 +70,8 @@ class experiment(object):
         self.Roman = Roman
         self.custom_n = custom_n
         self.custom_b = custom_b
+
+        self.HI_shot_model = HI_shot_model
         self.Ndetectors = Ndetectors
         self.fill_factor = fill_factor
         self.tint = tint
@@ -80,3 +84,9 @@ class experiment(object):
         else:
             self.N_w = 1.0
             self.kparallel_min = 0.01
+
+    def Pshot_HI(self, z):
+        if self.HI_shot_model == "castorina":
+            return castorinaPn(z)
+        else:
+            raise NotImplementedError("Unrecognized HI shot noise model!")

@@ -3,7 +3,7 @@ from velocileptors.LPT.cleft_fftw import CLEFT
 from .bao_recon.zeldovich_rsd_recon_fftw import Zeldovich_Recon
 from velocileptors.LPT.lpt_rsd_fftw import LPT_RSD
 from scipy.signal import savgol_filter
-from .castorina import castorinaBias, castorinaPn
+from .castorina import castorinaBias
 from .twoPointNoise import *
 from scipy.integrate import simps
 from math import ceil
@@ -264,9 +264,10 @@ def compute_tracer_power_spectrum(
     if N is None:
         N = 1 / compute_n(fishcast, z)
     #
-    noise = 1 / compute_n(fishcast, z)
     if exp.HI:
-        noise = castorinaPn(z)  # only keep the shot noise piece
+        noise = exp.Pshot_HI(z)  # only keep the shot noise piece
+    else:
+        noise = 1 / compute_n(fishcast, z)
     sigv = exp.sigv
     Hz = fishcast.Hz_fid(z)
     if N2 == -1:
@@ -347,9 +348,10 @@ def compute_real_space_cross_power(
         else:
             alpha0 = 0.0
     if N == None:
-        N = 1 / compute_n(fishcast, z)
         if fishcast.experiment.HI:
-            N = castorinaPn(z)
+            N = fishcast.experiment.Pshot_HI(z)
+        else:
+            N = 1 / compute_n(fishcast, z)
     bk = (1 + gamma) / 2 - 1
     h = fishcast.params["h"]
 
@@ -450,9 +452,10 @@ def compute_lensing_Cell(
         alpha0_fid = 1.22 + 0.24 * b**2 * (zmid - 5.96)
     else:
         alpha0_fid = 0.0
-    N_fid = 1 / compute_n(fishcast, zmid)
     if fishcast.experiment.HI:
-        N_fid = castorinaPn(zmid)
+        N_fid = fishcast.experiment.Pshot_HI(zmid)
+    else:
+        N_fid = 1 / compute_n(fishcast, zmid)
 
     if b == -1:
         b = b_fid
@@ -494,18 +497,19 @@ def compute_lensing_Cell(
     # Galaxy kernel (arbitrary normalization)
     def nonnorm_Wg(z):
         result = fishcast.cosmo.Hubble(z)
-        try:
-            number_density = compute_n(fishcast, z)
-        except:
-            if X == Y and X == "k":
-                number_density = 10
-            else:
-                raise Exception(
-                    "Attemped to integrate outside of \
-                                specificed n(z) range"
-                )
+
         if fishcast.experiment.HI:
-            number_density = castorinaPn(z)
+            number_density = 1 / fishcast.experiment.Pshot_HI(z)
+        else:
+            try:
+                number_density = compute_n(fishcast, z)
+            except:
+                if X == Y and X == "k":
+                    number_density = 10
+                else:
+                    raise Exception(
+                        "Attemped to integrate outside of specificed n(z) range"
+                    )
         result *= number_density * dchidz(z) * chi(z) ** 2
         return result
 
@@ -554,7 +558,7 @@ def compute_lensing_Cell(
         if not fishcast.experiment.HI:
             return 1 / compute_n(fishcast, z) * N / N_fid
         else:
-            return castorinaPn(z) * N / N_fid
+            return fishcast.experiment.Pshot_HI(z) * N / N_fid
 
     # calculate P_XY
     if not noise:
@@ -603,9 +607,10 @@ def compute_recon_power_spectrum(fishcast, z, b=-1.0, b2=-1.0, bs=-1.0, N=None):
         b2 = 8 * (b - 1) / 21
     if bs == -1:
         bs = -2 * (b - 1) / 7
-    noise = 1 / compute_n(fishcast, z)
     if fishcast.experiment.HI:
-        noise = castorinaPn(z)
+        noise = fishcast.experiment.Pshot_HI(z)
+    else:
+        noise = 1 / compute_n(fishcast, z)
     if N is None:
         N = 1 / compute_n(fishcast, z)
     f = fishcast.cosmo.scale_independent_growth_factor_f(z)

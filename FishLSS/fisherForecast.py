@@ -1,7 +1,7 @@
 from .headers import *
 from .twoPoint import *
 from .twoPointNoise import *
-from .castorina import castorinaBias, castorinaPn
+from .castorina import castorinaBias
 from functools import partial
 import os, json
 from os.path import exists
@@ -43,7 +43,7 @@ class fisherForecast(object):
         N2cut=0.2,
         setup=True,
         overwrite=False,
-        verbose=False
+        verbose=False,
     ):
 
         self.kmin = kmin
@@ -97,7 +97,8 @@ class fisherForecast(object):
             if not os.path.exists(directory):
                 os.mkdir(directory)
 
-        if verbose: print("Setting parameters...")
+        if verbose:
+            print("Setting parameters...")
         if (cosmo is None) or (experiment is None):
             print("Attempted to create a forecast without an experiment or cosmology.")
         else:
@@ -108,11 +109,14 @@ class fisherForecast(object):
         self.create_json_summary()
 
         if setup or overwrite:
-            if verbose: print("Computing fiducial P(k)...")
+            if verbose:
+                print("Computing fiducial P(k)...")
             self.compute_fiducial_Pk(overwrite=overwrite)
-            if verbose: print("Computing fiducial C_ell...")
+            if verbose:
+                print("Computing fiducial C_ell...")
             self.compute_fiducial_Cl(overwrite=overwrite)
-            if verbose: print("Computing fiducial P_rec(k)...")
+            if verbose:
+                print("Computing fiducial P_rec(k)...")
             self.compute_fiducial_Precon(overwrite=overwrite)
 
     def set_experiment_and_cosmology_specific_parameters(
@@ -293,7 +297,7 @@ class fisherForecast(object):
         zs = self.experiment.zcenters
         bs = list([float(compute_b(self, z)) for z in zs])
         if self.experiment.HI:
-            ns = list([1/float(castorinaPn(z)) for z in zs])
+            ns = list([1 / float(self.experiment.Pshot_HI(z)) for z in zs])
         else:
             ns = list([float(compute_n(self, z)) for z in zs])
 
@@ -317,7 +321,7 @@ class fisherForecast(object):
         # is >= 100*N2cut % of the total power
         def get_n(z):
             if self.experiment.HI:
-                return castorinaPn(z)
+                return 1 / self.experiment.Pshot_HI(z)
             return compute_n(self, z)
 
         sigv = self.experiment.sigv
@@ -486,9 +490,10 @@ class fisherForecast(object):
             alpha0_fid = self.experiment.alpha0(z)
         Hz = self.Hz_fid(z)
         N_fid = 1 / compute_n(self, z)
-        noise = 1 / compute_n(self, z)
         if self.experiment.HI:
-            noise = castorinaPn(z)
+            noise = self.experiment.Pshot_HI(z)
+        else:
+            noise = 1 / compute_n(self, z)
         sigv = self.experiment.sigv
         N2_fid = -noise * ((1 + z) * sigv / Hz) ** 2.0
 
@@ -589,7 +594,7 @@ class fisherForecast(object):
             Ez = self.cosmo.Hubble(z) / self.cosmo.Hubble(0)
             Ohi = 4e-4 * (1 + z) ** 0.6
             Tb = 188e-3 * (self.params["h"]) / Ez * Ohi * (1 + z) ** 2
-            return 2.0 * (P_fid - noise + castorinaPn(z)) / Tb
+            return 2.0 * (P_fid - noise + self.experiment.Pshot_HI(z)) / Tb
 
         if param == "alpha_parallel":
             K, MU = self.k, self.mu
@@ -919,9 +924,10 @@ class fisherForecast(object):
             alpha0_fid = 1.22 + 0.24 * b_fid**2 * (zmid - 5.96)
         else:
             alpha0_fid = 0.0
-        noise = 1 / compute_n(self, zmid)
         if self.experiment.HI:
-            noise = castorinaPn(zmid)
+            noise = self.experiment.Pshot_HI(zmid)
+        else:
+            noise = 1 / compute_n(self, zmid)
 
         kwargs = {
             "fishcast": self,
@@ -1186,9 +1192,7 @@ class fisherForecast(object):
         z_par_multidx = mpiutil.partition_list(z_par_multidx, partition, n_partitions)
 
         if verbose:
-            print(
-                f"Partition: {partition}: computing {len(z_par_multidx)} derivatives"
-            )
+            print(f"Partition: {partition}: computing {len(z_par_multidx)} derivatives")
 
         # Loop through each (z,p) pair in partition
         for idxi, idx in enumerate(z_par_multidx):

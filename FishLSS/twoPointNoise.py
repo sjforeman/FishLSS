@@ -1,6 +1,6 @@
 from .headers import *
 from .twoPoint import *
-from .castorina import castorinaBias, castorinaPn
+from .castorina import castorinaBias
 import scipy
 
 
@@ -494,22 +494,11 @@ def HI_therm(
     return Pn
 
 
-def HI_shot(z):
-    """
-    PUMA shot noise Mpc^3/h^3 from Emanuele Castorina
-    for z < 6. For z > 6 assume that the shot noise
-    is 0.
-    """
-    if z <= 6:
-        return castorinaPn(z)
-    return 1e-10
-
-
 def HIneff(fishcast, z):
     """
     Effective number density for PUMA. Returns
     an array of length Nk*Nmu.
     """
     therm = HI_therm(fishcast, z)(fishcast.k, fishcast.mu)
-    shot = HI_shot(z)
+    shot = fishcast.experiment.Pshot_HI(z)
     return 1.0 / (therm + shot)
