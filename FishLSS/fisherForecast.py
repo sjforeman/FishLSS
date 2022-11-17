@@ -312,6 +312,7 @@ class fisherForecast(object):
             "HI": self.experiment.HI,
             "pessimistic": self.experiment.pessimistic,
             "HI_shot_model": self.experiment.HI_shot_model,
+            "HI_shot_multiplier": self.experiment.HI_shot_multiplier,
         }
 
         with open("output/" + self.name + "/" + "summary.json", "w") as write_file:

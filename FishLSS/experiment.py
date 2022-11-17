@@ -37,6 +37,7 @@ class experiment(object):
         sigv=100,  # comoving velocity dispersion for FoG contribution [km/s]
         D=6,
         HI_shot_model="castorina",
+        HI_shot_multiplier=1.0,
     ):
 
         self.zmin = zmin
@@ -72,6 +73,7 @@ class experiment(object):
         self.custom_b = custom_b
 
         self.HI_shot_model = HI_shot_model
+        self.HI_shot_multiplier = HI_shot_multiplier
         self.Ndetectors = Ndetectors
         self.fill_factor = fill_factor
         self.tint = tint
@@ -87,6 +89,6 @@ class experiment(object):
 
     def Pshot_HI(self, z):
         if self.HI_shot_model == "castorina":
-            return castorinaPn(z)
+            return self.HI_shot_multiplier * castorinaPn(z)
         else:
             raise NotImplementedError("Unrecognized HI shot noise model!")
