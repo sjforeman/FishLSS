@@ -24,31 +24,53 @@ def compute_covariance_matrix(fishcast, zbin_index, nratio=1):
     """
     Covariance is diagonal. Returns an array of length Nk*Nmu.
     """
+
+    # Compute prefactor that multiplies P_{gg,i}(z)^2 in covariance (see Eq. 3.6 in
+    # Sailer+2021)
     z = fishcast.experiment.zcenters[zbin_index]
     prefactor = (4.0 * np.pi**2.0) / (
         fishcast.dk * fishcast.dmu * fishcast.Vsurvey[zbin_index] * fishcast.k**2.0
     )
+
+    # Compute number density (incorporates thermal noise for HI survey)
     number_density = compute_n(fishcast, z)
-    # The number density is effectively reduced if there are redshift uncertainties
-    Hz = fishcast.cosmo_fid.Hubble(z) * (299792.458) / fishcast.params["h"]
-    sigma_parallel = (3.0e5) * (1.0 + z) * fishcast.experiment.sigma_z / Hz
-    number_density = number_density * np.maximum(
-        np.exp(-fishcast.k**2.0 * fishcast.mu**2.0 * sigma_parallel**2.0), 1.0e-20
-    )
-    # this assumes that the fiducial exeriment doesn't have any redshift errors, come up with a more general fix
-    P_fid = fishcast.P_fid[zbin_index]
+    number_density_with_sigmaz = number_density
+
+    # Get fiducial power spectrum (including noise)
     if fishcast.recon:
         P_fid = fishcast.P_recon_fid[zbin_index]
-    if not fishcast.experiment.HI:
+    else:
+        P_fid = fishcast.P_fid[zbin_index]
+
+    if fishcast.experiment.sigma_z > 1e-10:
+        # The number density (including 21cm noise) is effectively reduced if there are
+        # redshift uncertainties
+        Hz = fishcast.cosmo_fid.Hubble(z) * (299792.458) / fishcast.params["h"]
+        sigma_parallel = (3.0e5) * (1.0 + z) * fishcast.experiment.sigma_z / Hz
+        number_density_with_sigmaz = number_density * np.maximum(
+            np.exp(-fishcast.k**2.0 * fishcast.mu**2.0 * sigma_parallel**2.0),
+            1.0e-20,
+        )
+
+    if (fishcast.experiment.sigma_z > 1e-10) or (nratio != 1):
+        # Adjust noise in P_fid to account for redshift uncertainties and/or manual
+        # rescaling, assuming that fiducial experiment doesn't have any redshift
+        # uncertainties
+        if fishcast.experiment.HI:
+            raise NotImplmementedError(
+                "Can't have sigma_z or rescaled noise with HI survey!"
+            )
+
         C = (
             prefactor
-            * (P_fid - 1 / compute_n(fishcast, z) + 1 / nratio / number_density) ** 2.0
+            * (P_fid - 1 / number_density + 1 / nratio / number_density_with_sigmaz)
+            ** 2.0
         )
     else:
-        # since HI noise blows up at high k, I'm trying to avoid numerical from
-        # subtracting O(1e20) from O(1e20)
         C = prefactor * P_fid**2
-    return np.maximum(C, 1e-50)  # avoiding numerical nonsense with possible 0's
+
+    # Ensure covariance doesn't contain any zeros
+    return np.maximum(C, 1e-50)
 
 
 def covariance_Cls(fishcast, kmax_knl=1.0, CMB="SO"):
