@@ -449,6 +449,7 @@ def HI_therm(
     omtcoupling=0.9,
     Tampl=50.0,
     old=True,
+    sailer_nside=False,
 ):
     """
     Adapted from https://github.com/slosar/PUMANoise.
@@ -465,7 +466,16 @@ def HI_therm(
         * 3600.0
         * fishcast.experiment.fill_factor**2
     )
-    Nside = np.sqrt(fishcast.experiment.Ndetectors / fishcast.experiment.fill_factor)
+    if sailer_nside:
+        # Noah's code divides Ndetectors by the fill factor, but the PUMANoise code
+        # (and the forecasts in the Cosmic Visions white paper) only accounts for the
+        # fill factor by rescaling the observing time, so our default option is *not*
+        # to rescale Nside
+        Nside = np.sqrt(
+            fishcast.experiment.Ndetectors / fishcast.experiment.fill_factor
+        )
+    else:
+        Nside = np.sqrt(fishcast.experiment.Ndetectors)
     Hz = (
         fishcast.cosmo_fid.Hubble(z) * (299792.458) / fishcast.params_fid["h"]
     )  # in h km/s/Mpc
