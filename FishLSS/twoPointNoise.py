@@ -442,12 +442,6 @@ def get_Tb(fishcast, z):
 def HI_therm(
     fishcast,
     z,
-    effic=0.7,
-    hexpack=True,
-    skycoupling=0.9,
-    Tground=300.0,
-    omtcoupling=0.9,
-    Tampl=50.0,
     old=True,
     sailer_nside=False,
 ):
@@ -458,24 +452,20 @@ def HI_therm(
     I divide by Tb (see get_Tb) to convert to Mpc^3/h^3.
     Returns a function of k [h/Mpc] and mu.
     """
-    D = fishcast.experiment.D
-    ttotal = (
-        fishcast.experiment.tint
-        * 365
-        * 24
-        * 3600.0
-        * fishcast.experiment.fill_factor**2
-    )
+    exp = fishcast.experiment
+
+    D = exp.D
+    effic = exp.aperture_efficiency
+
+    ttotal = exp.tint * 365 * 24 * 3600.0 * exp.fill_factor**2
     if sailer_nside:
         # Noah's code divides Ndetectors by the fill factor, but the PUMANoise code
         # (and the forecasts in the Cosmic Visions white paper) only accounts for the
         # fill factor by rescaling the observing time, so our default option is *not*
         # to rescale Nside
-        Nside = np.sqrt(
-            fishcast.experiment.Ndetectors / fishcast.experiment.fill_factor
-        )
+        Nside = np.sqrt(exp.Ndetectors / exp.fill_factor)
     else:
-        Nside = np.sqrt(fishcast.experiment.Ndetectors)
+        Nside = np.sqrt(exp.Ndetectors)
     Hz = (
         fishcast.cosmo_fid.Hubble(z) * (299792.458) / fishcast.params_fid["h"]
     )  # in h km/s/Mpc
@@ -487,7 +477,7 @@ def HI_therm(
     Deff = D * np.sqrt(effic)
     FOV = (lam / Deff) ** 2
     y = 3e5 * (1 + z) ** 2 / (1420e6 * Hz)
-    Sarea = 4 * np.pi * fishcast.experiment.fsky
+    Sarea = 4 * np.pi * exp.fsky
     Ae = np.pi / 4 * D**2 * effic
     # k dependent terms
     kperp = lambda k, mu: k * np.sqrt(1.0 - mu**2.0)
@@ -495,7 +485,7 @@ def HI_therm(
 
     def Nu(k, mu):
         if old:
-            return nofl(l(k, mu), hexpack=hexpack, Nside=Nside, D=D) * lam**2
+            return nofl(l(k, mu), hexpack=exp.hex_pack, Nside=Nside, D=D) * lam**2
         #
         ll, pi2lnb = np.genfromtxt("input/baseline_bs_44_D_14.txt").T
         nofl_new = interp1d(
@@ -511,7 +501,8 @@ def HI_therm(
     Tb = get_Tb(fishcast, z)
     Tsky = lambda f: 25.0 * (f / 400.0) ** (-2.75) + 2.7
     Tscope = (
-        Tampl / omtcoupling / skycoupling + Tground * (1 - skycoupling) / skycoupling
+        exp.T_ampl / exp.omt_coupling / exp.sky_coupling
+        + exp.T_ground * (1 - exp.sky_coupling) / exp.sky_coupling
     )
     Tsys = Tsky(1420.0 / (1 + z)) + Tscope
     Pn = (

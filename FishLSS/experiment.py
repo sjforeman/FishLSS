@@ -36,10 +36,17 @@ class experiment(object):
         tint=5,  # HI survey: oberving time [years]
         sigv=100,  # comoving velocity dispersion for FoG contribution [km/s]
         D=6,
+        hex_pack=True,
+        aperture_efficiency=0.7,
+        sky_coupling=0.9,
+        omt_coupling=0.9,
+        T_ground=300.0,
+        T_ampl=50.0,
         HI_shot_model="castorina",
         HI_shot_multiplier=1.0,
     ):
 
+        # Redshift parameters
         self.zmin = zmin
         self.zmax = zmax
         self.nbins = nbins
@@ -48,20 +55,28 @@ class experiment(object):
             self.zedges = zedges
             self.nbins = len(zedges) - 1
         self.zcenters = (self.zedges[1:] + self.zedges[:-1]) / 2.0
-        self.fsky = fsky
         self.sigma_z = sigma_z
+
+        # Sky fraction
+        self.fsky = fsky
+
         # If the number density is not a float, assumed to be a function of z
         if not isinstance(n, float):
             self.n = n
         else:
             self.n = lambda z: n + 0.0 * z
+
         # If the bias is not a float, assumed to be a function of z
         if not isinstance(b, float):
             self.b = b
         else:
             self.b = lambda z: b + 0.0 * z
+
+        # Bias/stochastic parameters
         self.b2 = b2
         self.alpha0 = alpha0
+
+        # Flags for specific surveys
         self.LBG = LBG
         self.HI = HI
         self.Halpha = Halpha
@@ -72,6 +87,7 @@ class experiment(object):
         self.custom_n = custom_n
         self.custom_b = custom_b
 
+        # HI survey parameters
         self.HI_shot_model = HI_shot_model
         self.HI_shot_multiplier = HI_shot_multiplier
         self.Ndetectors = Ndetectors
@@ -79,6 +95,12 @@ class experiment(object):
         self.tint = tint
         self.sigv = sigv
         self.D = D
+        self.hex_pack = hex_pack
+        self.aperture_efficiency = aperture_efficiency
+        self.sky_coupling = sky_coupling
+        self.omt_coupling = omt_coupling
+        self.T_ground = T_ground
+        self.T_ampl = T_ampl
         self.pessimistic = pessimistic
         if pessimistic:
             self.N_w = 3.0

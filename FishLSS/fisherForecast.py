@@ -317,6 +317,12 @@ class fisherForecast(object):
             "fill_factor": self.experiment.fill_factor,
             "t_int": self.experiment.tint,
             "dish_diameter": self.experiment.D,
+            "hex_pack": self.experiment.hex_pack,
+            "aperture_efficiency": self.experiment.aperture_efficiency,
+            "sky_coupling": self.experiment.sky_coupling,
+            "omt_coupling": self.experiment.omt_coupling,
+            "T_ground": self.experiment.T_ground,
+            "T_ampl": self.experiment.T_ampl,
         }
 
         with open("output/" + self.name + "/" + "summary.json", "w") as write_file:
