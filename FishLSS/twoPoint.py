@@ -232,7 +232,11 @@ def compute_tracer_power_spectrum(
 ):
     """
     Computes the nonlinear redshift-space power spectrum P(k,mu) [Mpc/h]^3
-    of the matter tracer. Returns an array of length Nk*Nmu.
+    of the matter tracer.
+
+    Noise terms are included.
+
+    Returns an array of length Nk*Nmu.
     """
     exp = fishcast.experiment
     if fishcast.recon:
@@ -600,6 +604,8 @@ def compute_lensing_Cell(
 def compute_recon_power_spectrum(fishcast, z, b=-1.0, b2=-1.0, bs=-1.0, N=None):
     """
     Returns the reconstructed power spectrum, following Stephen's paper.
+
+    Noise terms are included.
     """
     if b == -1.0:
         b = compute_b(fishcast, z)
@@ -607,10 +613,6 @@ def compute_recon_power_spectrum(fishcast, z, b=-1.0, b2=-1.0, bs=-1.0, N=None):
         b2 = 8 * (b - 1) / 21
     if bs == -1:
         bs = -2 * (b - 1) / 7
-    if fishcast.experiment.HI:
-        noise = fishcast.experiment.Pshot_HI(z)
-    else:
-        noise = 1 / compute_n(fishcast, z)
     if N is None:
         N = 1 / compute_n(fishcast, z)
     f = fishcast.cosmo.scale_independent_growth_factor_f(z)
