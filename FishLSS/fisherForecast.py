@@ -1098,6 +1098,132 @@ class fisherForecast(object):
             result *= self.params["A_s"]
         return result
 
+    def dsigma8_dp(
+        self,
+        param,
+        z,
+        relative_step=None,
+        absolute_step=None,
+        five_point=False,
+        kwargs=None,
+    ):
+        """Compute dsigma_8/dp for specified parameter and redshift.
+
+        Parameters
+        ----------
+        param : str
+            Parameter name.
+        z : float
+            Redshift.
+        relative_step, absolute_step : float, optional
+            Relative or absolute steps for numerical derivatives. Relative step is used
+            unless default parameter values is zero, in which case absolute step is
+            used.
+        five_point : bool, optional
+            Whether to use five-point stencil for numerical derivative. Currently
+            not implemented. Default: False.
+        kwargs : dict, optional
+            Dict of default parameter values for various special parameters.
+            Set internally to a default dict if none specified. Default: None.
+
+        Returns
+        -------
+        dsig8_dp : float
+            Derivative of sigma_8 w.r.t specified parameter at specified reshift.
+        """
+
+        # If the parameter is a bias or stochastic parameter, return zero, because
+        # sigma_8 has no dependence on it
+        if param in [
+            "N",
+            "alpha0",
+            "b",
+            "b2",
+            "bs",
+            "N2",
+            "N4",
+            "alpha2",
+            "alpha4",
+            "Tb",
+        ]:
+            return 0.0
+
+        # Function to compute sigma_8 as a function of cosmological parameters
+        def get_sig8(cosmo, pars):
+            cosmo.set(pars)
+            cosmo.compute()
+            return cosmo.sigma8() * cosmo.scale_independent_growth_factor(z)
+
+        # Some default steps for numerical derivatives of special parameters
+        default_step = {"tau_reio": 0.3, "m_ncdm": 0.05, "A_lin": 0.002}
+
+        # Set relative and absolute step sizes
+        if relative_step is None:
+            try:
+                relative_step = default_step[param]
+            except:
+                relative_step = 0.01
+        if absolute_step is None:
+            try:
+                absolute_step = default_step[param]
+            except:
+                absolute_step = 0.01
+
+        # Set kwargs if not specified
+        if kwargs is None:
+            kwargs = {
+                "A_lin": self.A_lin,
+                "omega_lin": self.omega_lin,
+                "phi_lin": self.phi_lin,
+                "kIR": 0.2,
+            }
+
+        # Initialize CLASS and get fiducial value of sigma_8
+        cosmo = Class()
+        sig8_fid = get_sig8(cosmo, self.params_fid)
+
+        # Get fiducial parameter value. If log(A_s) specified, get default A_s value
+        # and set a flag to remind us that we actually want a log-derivative
+        log_As_flag = False
+        if param in kwargs:
+            default_value = kwargs[param]
+        elif (param in self.params) or (param == "log(A_s)"):
+            if param == "log(A_s)":
+                log_As_flag = True
+                param = "A_s"
+
+            default_value = self.params[param]
+        else:
+            return 0.0
+
+        # Compute steps for numerical derivative
+        if default_value == 0:
+            up = absolute_step
+            down = -absolute_step
+            upup = 2 * absolute_step
+            downdown = -2 * absolute_step
+        else:
+            up = default_value * (1 + relative_step)
+            down = default_value * (1 - relative_step)
+            upup = default_value * (1 + 2 * relative_step)
+            downdown = default_value * (1 - 2 * relative_step)
+
+        step = up - default_value
+
+        # Compute numerical derivative
+        sig8_up = get_sig8(cosmo, {param: up})
+        sig8_down = get_sig8(cosmo, {param: down})
+        if five_point:
+            raise NotImplementedError("5-point derivative not implemented for sigma_8!")
+        else:
+            dsig8_dp = (sig8_up - sig8_down) / (2.0 * step)
+
+        # Account for log-derivative if needed
+        if log_As_flag:
+            dsig8_dp *= self.params_fid["A_s"]
+
+        return dsig8_dp
+
     def Sigma2(self, z):
         return sum(
             compute_matter_power_spectrum(self, z, linear=True) * self.dk * self.dmu
