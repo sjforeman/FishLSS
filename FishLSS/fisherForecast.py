@@ -326,6 +326,8 @@ class fisherForecast(object):
             "omt_coupling": self.experiment.omt_coupling,
             "T_ground": self.experiment.T_ground,
             "T_ampl": self.experiment.T_ampl,
+            "knl_z0": self.experiment.knl_z0,
+            "dknl_dz": self.experiment.dknl_dz,
         }
 
         with open("output/" + self.name + "/" + "summary.json", "w") as write_file:
@@ -1242,8 +1244,31 @@ class fisherForecast(object):
             compute_matter_power_spectrum(self, z, linear=True) * self.dk * self.dmu
         ) / (6.0 * np.pi**2.0)
 
+    def knl_z(self, z):
+        """Return the nonlinear scale (in h/Mpc) as a function of redshift.
+
+        Relies on `knl_z0` and `dknl_dz` being set internally beforehand.
+
+        Parameters
+        ----------
+        z : float
+            Redshift.
+
+        Returns
+        -------
+        k_nl : float
+            k_nonlinear, in h/Mpc.
+        """
+        if self.experiment.knl_z0 is None:
+            # Default: inverse of rms Zeldovich displacement.
+            # In default cosmology, inverse of rms Zeldovich displacement is roughly
+            # described by knl_z0 = 0.16 h/Mpc, dknl_dz = 0.13 h/Mpc
+            return 1 / np.sqrt(self.Sigma2(z))
+        else:
+            return self.experiment.knl_z0 + z * self.experiment.dknl_dz
+
     def kmax_constraint(self, z, kmax_knl=1.0):
-        return self.k < kmax_knl / np.sqrt(self.Sigma2(z))
+        return self.k < kmax_knl * self.knl_z(z)
 
     def compute_wedge(self, z, kmin=0.003):
         """

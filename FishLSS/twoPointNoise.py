@@ -104,7 +104,7 @@ def covariance_Cls(fishcast, kmax_knl=1.0, CMB="SO"):
         * fishcast.cosmo_fid.angular_distance(z)
         * fishcast.params["h"]
     )
-    ellmaxs = np.array([kmax_knl * chi(z) / np.sqrt(fishcast.Sigma2(z)) for z in zs])
+    ellmaxs = np.array([kmax_knl * chi(z) * fishcast.knl_z(z) for z in zs])
     constraint = np.ones((n, len(l)))
     idx = np.array([np.where(l)[0] >= ellmax for ellmax in ellmaxs])
     for i in range(n):

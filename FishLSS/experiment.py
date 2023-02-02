@@ -47,6 +47,8 @@ class experiment(object):
         HI_stoch_model="castorina",
         HI_stoch_multiplier=1.0,
         HI_sampling_model="castorina",
+        knl_z0=None,
+        dknl_dz=None,
     ):
 
         # Redshift parameters
@@ -78,6 +80,16 @@ class experiment(object):
         # Bias/stochastic parameters
         self.b2 = b2
         self.alpha0 = alpha0
+
+        # Assumption for k_nl(z) (function itself is defined in fisherForecast).
+        # In default cosmology, inverse of rms Zeldovich displacement is roughly
+        # described by knl_z0 = 0.16 h/Mpc, dknl_dz = 0.13 h/Mpc
+        if (knl_z0 is None and dknl_dz is not None) or (
+            knl_z0 is not None and dknl_dz is None
+        ):
+            raise InputError("Must specify both knl_z0 and dknl_dz if one is specified")
+        self.knl_z0 = knl_z0
+        self.dknl_dz = dknl_dz
 
         # Flags for specific surveys
         self.LBG = LBG
@@ -173,9 +185,9 @@ class experiment(object):
         if self.HI_stoch_model == "castorina":
             result = self.HI_stoch_multiplier * castorinaPn(z)
         elif self.HI_stoch_model == "obuljen_TNG":
-            result = self.HI_stoch_function(z, k)
+            result = self.HI_stoch_multiplier * self.HI_stoch_function(z, k)
         elif self.HI_stoch_model == "obuljen_TNG_white":
-            result = self.HI_stoch_function(z)
+            result = self.HI_stoch_multiplier * self.HI_stoch_function(z)
         else:
             raise NotImplementedError("Unrecognized HI stochastic noise model!")
 
