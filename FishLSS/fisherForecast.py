@@ -296,8 +296,9 @@ class fisherForecast(object):
         ze = list(self.experiment.zedges)
         zs = self.experiment.zcenters
         bs = list([float(compute_b(self, z)) for z in zs])
+        # Need convert ns to list, so that it can be exported with json
         if self.experiment.HI:
-            ns = list([1 / float(self.experiment.Pshot_HI(z)) for z in zs])
+            ns = [(1.0 / self.experiment.Pstoch_HI(z, self.k)).tolist() for z in zs]
         else:
             ns = list([float(compute_n(self, z)) for z in zs])
 
@@ -305,14 +306,16 @@ class fisherForecast(object):
             "Forecast name": self.name,
             "Edges of redshift bins": ze,
             "Centers of redshift bins": list(zs),
+            "k": list(self.k),
             "Linear Eulerian bias in each bin": bs,
             "Number density in each bin": ns,
             "fsky": self.experiment.fsky,
             "CLASS default parameters": self.params_fid,
             "HI": self.experiment.HI,
             "pessimistic": self.experiment.pessimistic,
-            "HI_shot_model": self.experiment.HI_shot_model,
-            "HI_shot_multiplier": self.experiment.HI_shot_multiplier,
+            "HI_stoch_model": self.experiment.HI_stoch_model,
+            "HI_stoch_multiplier": self.experiment.HI_stoch_multiplier,
+            "HI_sampling_model": self.experiment.HI_sampling_model,
             "Ndetectors": self.experiment.Ndetectors,
             "fill_factor": self.experiment.fill_factor,
             "t_int": self.experiment.tint,
@@ -332,9 +335,12 @@ class fisherForecast(object):
         # Create a "k_parallel cut", removing modes whose N2 term
         # is >= 100*N2cut % of the total power
         def get_n(z):
+            # We only want the physical HI sampling noise here, not the full stochastic
+            # noise, since we want the quantity related to RSD
             if self.experiment.HI:
-                return 1 / self.experiment.Pshot_HI(z)
-            return compute_n(self, z)
+                return 1 / self.experiment.Psampling_HI(z)
+            else:
+                return compute_n(self, z)
 
         sigv = self.experiment.sigv
         sn2 = (
@@ -503,11 +509,14 @@ class fisherForecast(object):
         Hz = self.Hz_fid(z)
         N_fid = 1 / compute_n(self, z)
         if self.experiment.HI:
-            noise = self.experiment.Pshot_HI(z)
+            # Only the sampling noise affects N2
+            noise_sampling = self.experiment.Psampling_HI(z)
+            noise_stoch = self.experiment.Pstoch_HI(z, self.k)
         else:
-            noise = 1 / compute_n(self, z)
+            noise_sampling = 1 / compute_n(self, z)
+            noise_stoch = noise_sampling
         sigv = self.experiment.sigv
-        N2_fid = -noise * ((1 + z) * sigv / Hz) ** 2.0
+        N2_fid = -noise_sampling * ((1 + z) * sigv / Hz) ** 2.0
 
         if kwargs is None:
             kwargs = {
@@ -531,7 +540,8 @@ class fisherForecast(object):
             }
 
         if self.experiment.HI:
-            kwargs["N"] = noise  # ignores thermal HI noise in deriavtives
+            # Ignore HI thermal noise in derivatives
+            kwargs["N"] = noise_stoch
 
         if param in kwargs or param == "f_NL":
             fNL_flag = False
@@ -606,7 +616,9 @@ class fisherForecast(object):
             Ez = self.cosmo.Hubble(z) / self.cosmo.Hubble(0)
             Ohi = 4e-4 * (1 + z) ** 0.6
             Tb = 188e-3 * (self.params["h"]) / Ez * Ohi * (1 + z) ** 2
-            return 2.0 * (P_fid - noise + self.experiment.Pshot_HI(z)) / Tb
+            # P_fid contains the stochastic noise, which is also proportional to T_b^2,
+            # but not the thermal noise, so the derivative w.r.t. T_b is simple
+            return 2.0 * P_fid / Tb
 
         if param == "alpha_parallel":
             K, MU = self.k, self.mu
@@ -937,7 +949,8 @@ class fisherForecast(object):
         else:
             alpha0_fid = 0.0
         if self.experiment.HI:
-            noise = self.experiment.Pshot_HI(zmid)
+            # Only consider stochastic noise in derivatives
+            noise = self.experiment.Pstoch_HI(zmid)
         else:
             noise = 1 / compute_n(self, zmid)
 

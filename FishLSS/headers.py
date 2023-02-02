@@ -33,3 +33,4 @@ from .bao_recon.loginterp import loginterp
 from .bao_recon.spherical_bessel_transform_fftw import SphericalBesselTransform
 from .bao_recon.qfuncfft_recon import QFuncFFT
 from .bao_recon.zeldovich_rsd_recon_fftw import Zeldovich_Recon
+import FishLSS.obuljen as obuljen

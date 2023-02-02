@@ -146,10 +146,22 @@ def covariance_Cls(fishcast, kmax_knl=1.0, CMB="SO"):
 
 
 def compute_n(fishcast, z):
-    """
-    Returns the relevant number density h^3/Mpc^3. For HI surveys
-    returns an array of length Nk*Nmu, for all other surveys
-    return a float.
+    """Effective 3d survey number density, in h^3/Mpc^3.
+
+    For HI surveys, returns an array of length Nk*Nmu, which includes stochastic noise
+    and thermal noise. For all other surveys, return a float corresponding to the
+    comoving number density of tracers.
+
+    Parameters
+    ----------
+    z : float
+        Redshift.
+
+    Returns
+    -------
+    n : array_like
+        Number density (single number), or HI effective number density (packed as
+        [k*mu]).
     """
     if fishcast.experiment.LBG and not fishcast.experiment.custom_n:
         return LBGn(fishcast, z)
@@ -518,10 +530,18 @@ def HI_therm(
 
 
 def HIneff(fishcast, z):
-    """
-    Effective number density for PUMA. Returns
-    an array of length Nk*Nmu.
+    """Effective number density for 21cm survey, including stochastic and thermal noise.
+
+    Parameters
+    ----------
+    z : float
+        Redshift.
+
+    Returns
+    -------
+    neff : array_like
+        Effective number density at z and k, packed as [k*mu].
     """
     therm = HI_therm(fishcast, z)(fishcast.k, fishcast.mu)
-    shot = fishcast.experiment.Pshot_HI(z)
-    return 1.0 / (therm + shot)
+    stoch = fishcast.experiment.Pstoch_HI(z, fishcast.k)
+    return 1.0 / (therm + stoch)

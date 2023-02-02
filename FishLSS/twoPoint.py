@@ -267,18 +267,22 @@ def compute_tracer_power_spectrum(
             alpha0 = 0.0
     if N is None:
         N = 1 / compute_n(fishcast, z)
-    #
-    if exp.HI:
-        noise = exp.Pshot_HI(z)  # only keep the shot noise piece
-    else:
-        noise = 1 / compute_n(fishcast, z)
-    sigv = exp.sigv
-    Hz = fishcast.Hz_fid(z)
-    if N2 == -1:
-        N2 = -noise * ((1 + z) * sigv / fishcast.Hz_fid(z)) ** 2
 
     K = fishcast.k
     MU = fishcast.mu
+
+    if exp.HI:
+        # Use HI sampling noise here: we don't want the full k-dependent stochastic
+        # noise, since we will use this quantity to construct N2, which is related
+        # to the physical velocity dispersion of the tracers
+        noise_for_N2 = exp.Psampling_HI(z)
+    else:
+        noise_for_N2 = 1 / compute_n(fishcast, z)
+    sigv = exp.sigv
+    Hz = fishcast.Hz_fid(z)
+    if N2 == -1:
+        N2 = -noise_for_N2 * ((1 + z) * sigv / fishcast.Hz_fid(z)) ** 2
+
     h = fishcast.params["h"]
     klin = np.array([K[i * fishcast.Nmu] for i in range(fishcast.Nk)])
     plin = np.array([fishcast.cosmo.pk_cb_lin(k * h, z) * h**3.0 for k in klin])
@@ -290,7 +294,7 @@ def compute_tracer_power_spectrum(
     if fishcast.linear2:
         pmatter = np.repeat(plin, fishcast.Nmu)
         result = pmatter * (b + f * MU**2.0) ** 2.0
-        result /= 1 - N2 * (K * MU) ** 2 / noise
+        result /= 1 - N2 * (K * MU) ** 2 / noise_for_N2
         result += N
         return result
 
@@ -330,7 +334,7 @@ def compute_tracer_power_spectrum(
         + N
     )
     del lpt
-    return pkmu
+    return pkmu.flatten()
 
 
 def compute_real_space_cross_power(
@@ -351,11 +355,9 @@ def compute_real_space_cross_power(
             alpha0 = 1.22 + 0.24 * b**2 * (z - 5.96)
         else:
             alpha0 = 0.0
-    if N == None:
-        if fishcast.experiment.HI:
-            N = fishcast.experiment.Pshot_HI(z)
-        else:
-            N = 1 / compute_n(fishcast, z)
+    if N is None:
+        N = 1 / compute_n(fishcast, z)
+
     bk = (1 + gamma) / 2 - 1
     h = fishcast.params["h"]
 
@@ -385,7 +387,13 @@ def compute_real_space_cross_power(
     bLs = bs + 2 * (b - 1) / 7
 
     if X == Y and X == "g":
-        kk, pgg = cleft.combine_bias_terms_pk(bL1, bL2, bLs, alpha0, 0, N)
+        # For HI, N will be packed as [z, k*mu], but we just want [k], so we manually
+        # subselect the unique k elements.
+        if N.shape[-1] == fishcast.Nk * fishcast.Nmu:
+            N_for_gg = N.flatten()[:: fishcast.Nmu]
+        else:
+            N_for_gg = N
+        kk, pgg = cleft.combine_bias_terms_pk(bL1, bL2, bLs, alpha0, 0, N_for_gg)
         return interp1d(kk, pgg, kind="linear", bounds_error=False, fill_value=0.0)
 
     # if neither of the above cases are true, return Pkg
@@ -456,10 +464,7 @@ def compute_lensing_Cell(
         alpha0_fid = 1.22 + 0.24 * b**2 * (zmid - 5.96)
     else:
         alpha0_fid = 0.0
-    if fishcast.experiment.HI:
-        N_fid = fishcast.experiment.Pshot_HI(zmid)
-    else:
-        N_fid = 1 / compute_n(fishcast, zmid)
+    N_fid = 1 / compute_n(fishcast, zmid)
 
     if b == -1:
         b = b_fid
@@ -503,7 +508,9 @@ def compute_lensing_Cell(
         result = fishcast.cosmo.Hubble(z)
 
         if fishcast.experiment.HI:
-            number_density = 1 / fishcast.experiment.Pshot_HI(z)
+            # We want the physical number density here, which is the inverse of the HI
+            # sampling noise
+            number_density = 1 / fishcast.experiment.Psampling_HI(z)
         else:
             try:
                 number_density = compute_n(fishcast, z)
@@ -559,10 +566,8 @@ def compute_lensing_Cell(
     def Nz(z):
         if X == Y and X == "k":
             return 0
-        if not fishcast.experiment.HI:
-            return 1 / compute_n(fishcast, z) * N / N_fid
         else:
-            return fishcast.experiment.Pshot_HI(z) * N / N_fid
+            return 1 / compute_n(fishcast, z) * N / N_fid
 
     # calculate P_XY
     if not noise:
