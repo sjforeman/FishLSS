@@ -2,7 +2,8 @@
 """
 import os
 import numpy as np
-from scipy.interpolate import interp2d, RectBivariateSpline
+
+from scipy.interpolate import LinearNDInterpolator
 
 
 class Interpolator2d(object):
@@ -36,8 +37,12 @@ class Interpolator2d(object):
         self.y_min = self.y_in[0]
         self.y_max = self.y_in[-1]
 
-        self.spline = RectBivariateSpline(
-            self.x_in, self.y_in, self.z_in.T, bbox=bbox, kx=kx, ky=ky, s=s
+        x_mesh, y_mesh = np.meshgrid(self.x_in, self.y_in)
+        x_mesh = x_mesh.flatten()
+        y_mesh = y_mesh.flatten()
+
+        self.interp = LinearNDInterpolator(
+            list(zip(x_mesh, y_mesh)), self.z_in.flatten(), rescale=True
         )
 
     def evaluate(self, x, y):
@@ -62,7 +67,8 @@ class Interpolator2d(object):
         # Check that x is a single number and y is a 1d array
         if np.array(x).ndim != 0:
             raise InputError("x cannot be an array!")
-        if np.array(y).ndim != 1:
+        y = np.array(y)
+        if y.ndim != 1:
             raise InputError("y must be a 1d array!")
 
         # Make array for results, filled with NaNs so we know if something has gone
@@ -70,26 +76,28 @@ class Interpolator2d(object):
         result = np.empty(y.shape)
         result[:] = np.nan
 
+        # Make mask that selects y values that are within interpolator domain
+        y_mask = (y >= self.y_min) & (y <= self.y_max)
+
         if x < self.x_min:
             # If x < x_min, compute results at x_min
             result[y < self.y_min] = self.z_in[0, 0]
             result[y > self.y_max] = self.z_in[-1, 0]
-            result[(y >= self.y_min) & (y <= self.y_max)] = self.spline.ev(
-                self.x_min, y[(y >= self.y_min) & (y <= self.y_max)]
+            result[y_mask] = self.interp(
+                self.x_min * np.ones_like(y[y_mask]), y[y_mask]
             )
         elif x > self.x_max:
             # If x > x_min, compute results at x_max
             result[y < self.y_min] = self.z_in[0, -1]
             result[y > self.y_max] = self.z_in[-1, -1]
-            result[(y >= self.y_min) & (y <= self.y_max)] = self.spline.ev(
-                self.x_max, y[(y >= self.y_min) & (y <= self.y_max)]
+            result[y_mask] = self.interp(
+                self.x_max * np.ones_like(y[y_mask]), y[y_mask]
             )
         else:
             # If x is within bounds, still handle out-of-bounds y values carefully
-            result[y < self.y_min] = self.spline.ev(x, self.y_min)
-            result[y > self.y_max] = self.spline.ev(x, self.y_max)
-            result[(y >= self.y_min) & (y <= self.y_max)] = self.spline.ev(
-                x, y[(y >= self.y_min) & (y <= self.y_max)]
-            )
+            # print(y, self.y_min, self.y_max, x, y[(y >= self.y_min) & (y <= self.y_max)])
+            result[y < self.y_min] = self.interp(x, self.y_min)
+            result[y > self.y_max] = self.interp(x, self.y_max)
+            result[y_mask] = self.interp(x * np.ones_like(y[y_mask]), y[y_mask])
 
         return result
