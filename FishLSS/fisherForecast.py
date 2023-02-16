@@ -44,6 +44,7 @@ class fisherForecast(object):
         setup=True,
         overwrite=False,
         verbose=False,
+        subtract_quadratic_lowk_constants=False,
     ):
 
         self.kmin = kmin
@@ -81,6 +82,8 @@ class fisherForecast(object):
         self.P_recon_fid = None
         self.Vsurvey = None  # comoving volume [Mpc/h]^3 in each redshift bin
         self.params = None
+
+        self.subtract_quadratic_lowk_constants = subtract_quadratic_lowk_constants
 
         # make directories for storing derivatives and fiducial power spectra
         o, on = "output/", "output/" + self.name + "/"
@@ -202,7 +205,11 @@ class fisherForecast(object):
                 + ".txt"
             )
             if not exists(fname) or overwrite:
-                self.P_fid[i] = compute_tracer_power_spectrum(self, z)
+                self.P_fid[i] = compute_tracer_power_spectrum(
+                    self,
+                    z,
+                    subtract_quadratic_lowk_constants=self.subtract_quadratic_lowk_constants,
+                )
                 np.savetxt(fname, self.P_fid[i])
             else:
                 self.P_fid[i] = np.genfromtxt(fname)
@@ -222,7 +229,12 @@ class fisherForecast(object):
         # Ckk
         fname = "output/" + self.name + "/derivatives_Cl/Ckk_fid.txt"
         if not exists(fname) or overwrite:
-            self.Ckk_fid = compute_lensing_Cell(self, "k", "k")
+            self.Ckk_fid = compute_lensing_Cell(
+                self,
+                "k",
+                "k",
+                subtract_quadratic_lowk_constants=self.subtract_quadratic_lowk_constants,
+            )
             np.savetxt(fname, self.Ckk_fid)
         else:
             self.Ckk_fid = np.genfromtxt(fname)
@@ -244,7 +256,14 @@ class fisherForecast(object):
                 + ".txt"
             )
             if not exists(fname) or overwrite:
-                self.Ckg_fid[i] = compute_lensing_Cell(self, "k", "g", zmin, zmax)
+                self.Ckg_fid[i] = compute_lensing_Cell(
+                    self,
+                    "k",
+                    "g",
+                    zmin,
+                    zmax,
+                    subtract_quadratic_lowk_constants=self.subtract_quadratic_lowk_constants,
+                )
                 np.savetxt(fname, self.Ckg_fid[i])
             else:
                 self.Ckg_fid[i] = np.genfromtxt(fname)
@@ -260,7 +279,14 @@ class fisherForecast(object):
                 + ".txt"
             )
             if not exists(fname) or overwrite:
-                self.Cgg_fid[i] = compute_lensing_Cell(self, "g", "g", zmin, zmax)
+                self.Cgg_fid[i] = compute_lensing_Cell(
+                    self,
+                    "g",
+                    "g",
+                    zmin,
+                    zmax,
+                    subtract_quadratic_lowk_constants=self.subtract_quadratic_lowk_constants,
+                )
                 np.savetxt(fname, self.Cgg_fid[i])
             else:
                 self.Cgg_fid[i] = np.genfromtxt(fname)
@@ -285,7 +311,11 @@ class fisherForecast(object):
             )
             if not exists(fname) or overwrite:
                 self.recon = True
-                self.P_recon_fid[i] = compute_tracer_power_spectrum(self, z)
+                self.P_recon_fid[i] = compute_tracer_power_spectrum(
+                    self,
+                    z,
+                    subtract_quadratic_lowk_constants=self.subtract_quadratic_lowk_constants,
+                )
                 self.recon = False
                 np.savetxt(fname, self.P_recon_fid[i])
             else:
@@ -328,6 +358,7 @@ class fisherForecast(object):
             "T_ampl": self.experiment.T_ampl,
             "knl_z0": self.experiment.knl_z0,
             "dknl_dz": self.experiment.dknl_dz,
+            "subtract_quadratic_lowk_constants": self.subtract_quadratic_lowk_constants,
         }
 
         with open("output/" + self.name + "/" + "summary.json", "w") as write_file:
@@ -351,7 +382,11 @@ class fisherForecast(object):
         if zindex is not None:
             Ps = self.P_fid[zindex]
         else:
-            Ps = compute_tracer_power_spectrum(self, z)
+            Ps = compute_tracer_power_spectrum(
+                self,
+                z,
+                subtract_quadratic_lowk_constants=self.subtract_quadratic_lowk_constants,
+            )
         idx = np.where(sn2 / Ps >= self.N2cut)
         idx2 = np.where(Ps <= 0)
         kpar_cut = np.ones(self.Nk * self.Nmu)
@@ -539,6 +574,7 @@ class fisherForecast(object):
                 "omega_lin": self.omega_lin,
                 "phi_lin": self.phi_lin,
                 "kIR": 0.2,
+                "subtract_quadratic_lowk_constants": self.subtract_quadratic_lowk_constants,
             }
 
         if self.experiment.HI:
@@ -970,6 +1006,7 @@ class fisherForecast(object):
             "alpha0": alpha0_fid,
             "alphax": 0,
             "N": noise,
+            "subtract_quadratic_lowk_constants": self.subtract_quadratic_lowk_constants,
         }
 
         if param in kwargs:
@@ -1906,7 +1943,13 @@ class fisherForecast(object):
                 compute_matter_power_spectrum(self, z, linear=True)
                 * (b + f * MU**2.0) ** 2.0
             )
-            P_F = compute_tracer_power_spectrum(self, z, alpha0=alpha0, alpha2=alpha2)
+            P_F = compute_tracer_power_spectrum(
+                self,
+                z,
+                alpha0=alpha0,
+                alpha2=alpha2,
+                subtract_quadratic_lowk_constants=self.subtract_quadratic_lowk_constants,
+            )
             if linear:
                 P_F = P_L + 1 / compute_n(self, z)
             if halofit:
@@ -1949,7 +1992,11 @@ class fisherForecast(object):
                 compute_matter_power_spectrum(self, z, linear=True)
                 * (b + f * MU**2.0) ** 2.0
             )
-            P_F = compute_tracer_power_spectrum(self, z)
+            P_F = compute_tracer_power_spectrum(
+                self,
+                z,
+                subtract_quadratic_lowk_constants=self.subtract_quadratic_lowk_constants,
+            )
             integrand = (G(z) ** 2.0 * P_L / P_F) ** 2.0
             integrand *= self.k**2.0 * Deltak * self.dmu / (2.0 * np.pi**2.0)
             # we are dividing by 2 pi^2 (and not 4 pi^2) since we integrate from mu = 0 to 1
