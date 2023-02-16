@@ -6,6 +6,7 @@ import sys
 from time import time
 from timeit import timeit
 from copy import copy
+import warnings
 
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec

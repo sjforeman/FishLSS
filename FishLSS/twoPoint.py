@@ -229,6 +229,7 @@ def compute_tracer_power_spectrum(
     bL2=None,
     bLs=None,
     one_loop=True,
+    subtract_quadratic_lowk_constants=False,
 ):
     """
     Computes the nonlinear redshift-space power spectrum P(k,mu) [Mpc/h]^3
@@ -240,6 +241,10 @@ def compute_tracer_power_spectrum(
     """
     exp = fishcast.experiment
     if fishcast.recon:
+        if subtract_quadratic_lowk_constants:
+            warnings.warn(
+                "Constant-term subtraction not implemented when using reconstruction!"
+            )
         return compute_recon_power_spectrum(fishcast, z, b=b, b2=b2, bs=bs, N=N)
 
     if b == -1.0:
@@ -321,6 +326,13 @@ def compute_tracer_power_spectrum(
 
     lpt = LPT_RSD(klin, plin, kIR=kIR, one_loop=one_loop, cutoff=2)
     lpt.make_pltable(f, kmin=min(klin), kmax=max(klin), nk=len(klin))
+
+    # If desired, subtract low-k limits of b2^2 (index 5), b2*bs (index 8), and
+    # bs^2 (index 9) terms
+    if subtract_quadratic_lowk_constants:
+        for op_i in [5, 8, 9]:
+            lpt.p0ktable[:, op_i] -= lpt.p0ktable[0, op_i]
+
     k, p0, p2, p4 = lpt.combine_bias_terms_pkell(pars)
     if moments:
         return k, p0, p2, p4
@@ -338,7 +350,18 @@ def compute_tracer_power_spectrum(
 
 
 def compute_real_space_cross_power(
-    fishcast, X, Y, z, gamma=1.0, b=-1.0, b2=-1, bs=-1, alpha0=-1, alphax=0, N=None
+    fishcast,
+    X,
+    Y,
+    z,
+    gamma=1.0,
+    b=-1.0,
+    b2=-1,
+    bs=-1,
+    alpha0=-1,
+    alphax=0,
+    N=None,
+    subtract_quadratic_lowk_constants=False,
 ):
     """
     Wrapper function for CLEFT. Returns P_XY where X,Y = k or g
@@ -374,6 +397,13 @@ def compute_real_space_cross_power(
         plin = np.array([fishcast.cosmo.pk_lin(k * h, z) * h**3.0 for k in klin])
         cleft = CLEFT(klin, plin, cutoff=2.0)
         cleft.make_ptable(kmin=min(klin), kmax=max(klin), nk=fishcast.Nk)
+
+        # If desired, subtract low-k limits of b2^2 (index 6), b2*bs (index 9), and
+        # bs^2 (index 10) terms
+        if subtract_quadratic_lowk_constants:
+            for op_i in [6, 9, 10]:
+                cleft.pktable[:, op_i] -= cleft.pktable[0, op_i]
+
         kk, pmm = cleft.combine_bias_terms_pk(0, 0, 0, 0, 0, 0)
         if z > 10:
             pmm = np.array([fishcast.cosmo.pk(k * h, z) * h**3.0 for k in klin])
@@ -381,6 +411,12 @@ def compute_real_space_cross_power(
 
     cleft = CLEFT(klin, plin, cutoff=2.0)
     cleft.make_ptable(kmin=min(klin), kmax=max(klin), nk=fishcast.Nk)
+
+    # If desired, subtract low-k limits of b2^2 (index 6), b2*bs (index 9), and
+    # bs^2 (index 10) terms
+    if subtract_quadratic_lowk_constants:
+        for op_i in [6, 9, 10]:
+            cleft.pktable[:, op_i] -= cleft.pktable[0, op_i]
 
     bL1 = b - 1.0
     bL2 = b2 - 8 * (b - 1) / 21
@@ -429,6 +465,7 @@ def compute_lensing_Cell(
     Nzsteps=100,
     Nzeff="auto",
     maxDz=0.2,
+    subtract_quadratic_lowk_constants=False,
 ):
     """
     Calculates C^XY_l using the Limber approximation where X,Y = 'k' or 'g'.
@@ -584,6 +621,7 @@ def compute_lensing_Cell(
                 alpha0=alpha0z(zz),
                 alphax=alphax,
                 N=Nz(zz),
+                subtract_quadratic_lowk_constants=subtract_quadratic_lowk_constants,
             )
             for zz in zeff
         ]
