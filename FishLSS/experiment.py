@@ -19,8 +19,12 @@ class experiment(object):
         zedges=None,  # Optional: Edges of redshift bins. Default is evenly-spaced bins.
         fsky=0.5,  # Fraction of sky observed
         sigma_z=0.0,  # Redshift error sz/(1+z)
-        n=1e-3,  # Galaxy number density, float (constant n) or function of z
-        b=1.5,  # Galaxy bias, float (constant b) or function of z
+        # Galaxy number density, float (constant n) or function of z
+        # Must be specified if none of the survey-specific flags below are used
+        n=None,
+        # Galaxy bias, float (constant b) or function of z
+        # Must be specified if none of the survey-specific flags below are used
+        b=None,
         b2=None,  #
         alpha0=None,  #
         LBG=False,  #
@@ -30,8 +34,6 @@ class experiment(object):
         Euclid=False,  #
         MSE=False,  #
         Roman=False,  #
-        custom_n=False,  #
-        custom_b=False,  #
         pessimistic=False,  # HI survey: specifies the k-wedge
         Ndetectors=256**2.0,  # HI survey: number of detectors
         fill_factor=0.5,  # HI survey: the array's fill factor
@@ -66,16 +68,22 @@ class experiment(object):
         self.fsky = fsky
 
         # If the number density is not a float, assumed to be a function of z
-        if not isinstance(n, float):
-            self.n = n
+        if n is not None:
+            if not isinstance(n, float):
+                self.n = n
+            else:
+                self.n = lambda z: n + 0.0 * z
         else:
-            self.n = lambda z: n + 0.0 * z
+            self.n = None
 
         # If the bias is not a float, assumed to be a function of z
-        if not isinstance(b, float):
-            self.b = b
+        if b is not None:
+            if not isinstance(b, float):
+                self.b = b
+            else:
+                self.b = lambda z: b + 0.0 * z
         else:
-            self.b = lambda z: b + 0.0 * z
+            self.b = None
 
         # Bias/stochastic parameters
         self.b2 = b2
@@ -99,8 +107,6 @@ class experiment(object):
         self.Euclid = Euclid
         self.MSE = MSE
         self.Roman = Roman
-        self.custom_n = custom_n
-        self.custom_b = custom_b
 
         # HI stochasticity model
         self.HI_stoch_model = HI_stoch_model

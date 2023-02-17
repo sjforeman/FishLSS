@@ -331,6 +331,8 @@ class fisherForecast(object):
             "k": list(self.k),
             "Linear Eulerian bias in each bin": bs,
             "Number density in each bin": ns,
+            "custom_b": self.experiment.b is not None,
+            "custom_n": self.experiment.n is not None,
             "fsky": self.experiment.fsky,
             "CLASS default parameters": self.params_fid,
             "HI": self.experiment.HI,

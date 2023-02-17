@@ -163,19 +163,20 @@ def compute_n(fishcast, z):
         Number density (single number), or HI effective number density (packed as
         [k*mu]).
     """
-    if fishcast.experiment.LBG and not fishcast.experiment.custom_n:
+    custom_n = fishcast.experiment.n is not None
+    if fishcast.experiment.LBG and not custom_n:
         return LBGn(fishcast, z)
-    if fishcast.experiment.Halpha and not fishcast.experiment.custom_n:
+    if fishcast.experiment.Halpha and not custom_n:
         return hAlphaN(fishcast, z)
-    if fishcast.experiment.ELG and not fishcast.experiment.custom_n:
+    if fishcast.experiment.ELG and not custom_n:
         return ELGn(fishcast, z)
-    if fishcast.experiment.HI and not fishcast.experiment.custom_n:
+    if fishcast.experiment.HI and not custom_n:
         return HIneff(fishcast, z)
-    if fishcast.experiment.Euclid and not fishcast.experiment.custom_n:
+    if fishcast.experiment.Euclid and not custom_n:
         return Euclidn(z)
-    if fishcast.experiment.MSE and not fishcast.experiment.custom_n:
+    if fishcast.experiment.MSE and not custom_n:
         return MSEn(fishcast, z)
-    if fishcast.experiment.Roman and not fishcast.experiment.custom_n:
+    if fishcast.experiment.Roman and not custom_n:
         return Romann(fishcast, z)
     return fishcast.experiment.n(z)
 

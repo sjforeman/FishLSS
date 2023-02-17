@@ -85,8 +85,8 @@ def compute_b(fishcast, z):
     a forecast.
     """
     exp = fishcast.experiment
-    custom = exp.custom_b
-    if exp.LBG and not custom:
+    custom = exp.b is not None
+    if exp.LBG and custom:
         return LBGb(fishcast, z)
     if exp.HI and not custom:
         return HIb(z)
@@ -209,7 +209,7 @@ def get_smoothed_p(fishcast, z, klin, plin, division_factor=2.0):
 def compute_tracer_power_spectrum(
     fishcast,
     z,
-    b=-1.0,
+    b=None,
     b2=-1,
     bs=-1,
     alpha0=-1,
@@ -247,7 +247,7 @@ def compute_tracer_power_spectrum(
             )
         return compute_recon_power_spectrum(fishcast, z, b=b, b2=b2, bs=bs, N=N)
 
-    if b == -1.0:
+    if b is None:
         b = compute_b(fishcast, z)
     if b2 == -1 and exp.b2 is not None:
         b2 = exp.b2(z)
@@ -355,7 +355,7 @@ def compute_real_space_cross_power(
     Y,
     z,
     gamma=1.0,
-    b=-1.0,
+    b=None,
     b2=-1,
     bs=-1,
     alpha0=-1,
@@ -367,7 +367,7 @@ def compute_real_space_cross_power(
     Wrapper function for CLEFT. Returns P_XY where X,Y = k or g
     as a function of k.
     """
-    if b == -1.0:
+    if b is None:
         b = compute_b(fishcast, z)
     if b2 == -1:
         b2 = 8 * (b - 1) / 21
@@ -380,6 +380,7 @@ def compute_real_space_cross_power(
             alpha0 = 0.0
     if N is None:
         N = 1 / compute_n(fishcast, z)
+    N = np.array(N)
 
     bk = (1 + gamma) / 2 - 1
     h = fishcast.params["h"]
@@ -425,8 +426,11 @@ def compute_real_space_cross_power(
     if X == Y and X == "g":
         # For HI, N will be packed as [z, k*mu], but we just want [k], so we manually
         # subselect the unique k elements.
-        if N.shape[-1] == fishcast.Nk * fishcast.Nmu:
-            N_for_gg = N.flatten()[:: fishcast.Nmu]
+        if N.ndim > 0:
+            if N.shape[-1] == fishcast.Nk * fishcast.Nmu:
+                N_for_gg = N.flatten()[:: fishcast.Nmu]
+            else:
+                N_for_gg = N
         else:
             N_for_gg = N
         kk, pgg = cleft.combine_bias_terms_pk(bL1, bL2, bLs, alpha0, 0, N_for_gg)
@@ -455,7 +459,7 @@ def compute_lensing_Cell(
     zmax=None,
     zmid=None,
     gamma=1.0,
-    b=-1,
+    b=None,
     b2=-1,
     bs=-1,
     alpha0=-1,
@@ -495,6 +499,9 @@ def compute_lensing_Cell(
         zmid = (zmin + zmax) / 2
 
     b_fid = compute_b(fishcast, zmid)
+    if b is None:
+        b = b_fid
+
     b2_fid = 8 * (b_fid - 1) / 21
     bs_fid = -2 * (b_fid - 1) / 7
     if zmid < 6:
@@ -503,8 +510,6 @@ def compute_lensing_Cell(
         alpha0_fid = 0.0
     N_fid = 1 / compute_n(fishcast, zmid)
 
-    if b == -1:
-        b = b_fid
     if b2 == -1:
         b2 = b2_fid
     if bs == -1:
@@ -644,13 +649,13 @@ def compute_lensing_Cell(
     return np.array([result(l) for l in fishcast.ell])
 
 
-def compute_recon_power_spectrum(fishcast, z, b=-1.0, b2=-1.0, bs=-1.0, N=None):
+def compute_recon_power_spectrum(fishcast, z, b=None, b2=-1.0, bs=-1.0, N=None):
     """
     Returns the reconstructed power spectrum, following Stephen's paper.
 
     Noise terms are included.
     """
-    if b == -1.0:
+    if b is None:
         b = compute_b(fishcast, z)
     if b2 == -1:
         b2 = 8 * (b - 1) / 21
