@@ -317,7 +317,9 @@ class fisherForecast(object):
         #
         ze = list(self.experiment.zedges)
         zs = self.experiment.zcenters
-        bs = list([float(compute_b(self, z)) for z in zs])
+        b_list = list([float(compute_b(self, z)) for z in zs])
+        b2_list = list([float(compute_b2(self, z)) for z in zs])
+        bs_list = list([float(compute_bs(self, z)) for z in zs])
         # Need convert ns to list, so that it can be exported with json
         if self.experiment.HI:
             ns = [(1.0 / self.experiment.Pstoch_HI(z, self.k)).tolist() for z in zs]
@@ -329,10 +331,14 @@ class fisherForecast(object):
             "Edges of redshift bins": ze,
             "Centers of redshift bins": list(zs),
             "k": list(self.k),
-            "Linear Eulerian bias in each bin": bs,
+            "Linear Eulerian bias in each bin": b_list,
             "Number density in each bin": ns,
             "custom_b": self.experiment.b is not None,
             "custom_n": self.experiment.n is not None,
+            "b2": b2_list,
+            "bs": bs_list,
+            "custom_b2": self.experiment.b2 is not None,
+            "custom_bs": self.experiment.bs is not None,
             "fsky": self.experiment.fsky,
             "CLASS default parameters": self.params_fid,
             "HI": self.experiment.HI,
@@ -530,6 +536,9 @@ class fisherForecast(object):
                 absolute_step = 0.01
 
         b_fid = compute_b(self, z)
+        b2_fid = compute_b2(self, z)
+        bs_fid = compute_bs(self, z)
+
         f_fid = self.cosmo.scale_independent_growth_factor_f(z)
         if z < 6 and self.experiment.alpha0 is None:
             alpha0_fid = 1.22 + 0.24 * b_fid**2 * (z - 5.96)
@@ -554,8 +563,8 @@ class fisherForecast(object):
                 "fishcast": self,
                 "z": z,
                 "b": b_fid,
-                "b2": 8 * (b_fid - 1) / 21,
-                "bs": -2 * (b_fid - 1) / 7,
+                "b2": b2_fid,
+                "bs": bs_fid,
                 "alpha0": alpha0_fid,
                 "alpha2": 0,
                 "alpha4": 0.0,
@@ -976,6 +985,9 @@ class fisherForecast(object):
             zmid = self.experiment.zcenters[0]  # Ckk, where b and stuff don't matter
 
         b_fid = compute_b(self, zmid)
+        b2_fid = compute_b2(self, zmid)
+        bs_fid = compute_bs(self, zmid)
+
         if zmid < 6:
             alpha0_fid = 1.22 + 0.24 * b_fid**2 * (zmid - 5.96)
         else:
@@ -995,8 +1007,8 @@ class fisherForecast(object):
             "zmid": zmid,
             "gamma": 1,
             "b": b_fid,
-            "b2": 8 * (b_fid - 1) / 21,
-            "bs": -2 * (b_fid - 1) / 7,
+            "b2": b2_fid,
+            "bs": bs_fid,
             "alpha0": alpha0_fid,
             "alphax": 0,
             "N": noise,

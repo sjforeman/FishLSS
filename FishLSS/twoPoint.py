@@ -79,10 +79,19 @@ def HIb(z):
 
 
 def compute_b(fishcast, z):
-    """
-    Quick way of getting the bias. This is what
-    FishLSS always calls to get the bias from
-    a forecast.
+    """Compute linear bias at redshift z.
+
+    Parameters
+    ----------
+    fishcast : `FishLSS.fisherForecast.fisherForecast`
+        Forecast object.
+    z : float
+        Redshift.
+
+    Returns
+    -------
+    b : float
+        Value of b.
     """
     exp = fishcast.experiment
     custom = exp.b is not None
@@ -101,6 +110,143 @@ def compute_b(fishcast, z):
     if exp.Roman and not custom:
         return Romanb(z)
     return exp.b(z)
+
+
+def compute_b2(fishcast, z, b=None):
+    """Compute quadratic bias b2 at redshift z.
+
+    Parameters
+    ----------
+    fishcast : `FishLSS.fisherForecast.fisherForecast`
+        Forecast object.
+    z : float
+        Redshift.
+    b : float, optional
+        Linear bias, used if b2 depends on it. If not specified, the results of
+        `compute_b` are used. Default: None.
+
+    Returns
+    -------
+    b2 : float
+        Value of b2.
+    """
+
+    if fishcast.experiment.b2 is not None:
+        # If custom b2 is stored, use that
+        return fishcast.experiment.b2(z)
+    else:
+        # Otherwise, use Eulerian relation between b2 and b
+        if b is None:
+            b = compute_b(fishcast, z)
+        return 8 * (b - 1) / 21
+
+
+def compute_bs(fishcast, z, b=None):
+    """Compute tidal bias bs at redshift z.
+
+    Parameters
+    ----------
+    fishcast : `FishLSS.fisherForecast.fisherForecast`
+        Forecast object.
+    z : float
+        Redshift.
+    b : float, optional
+        Linear bias, used if bs depends on it. If not specified, the results of
+        `compute_b` are used. Default: None.
+
+    Returns
+    -------
+    bs : float
+        Value of bs.
+    """
+
+    if fishcast.experiment.bs is not None:
+        # If custom bs is stored, use that
+        return fishcast.experiment.bs(z)
+    else:
+        # Otherwise, use Eulerian relation between bs and b
+        if b is None:
+            b = compute_b(fishcast, z)
+        return -2 * (b - 1) / 7
+
+
+def compute_bL(fishcast, z, b=None):
+    """Compute Lagrangian linear bias at redshift z.
+
+    Parameters
+    ----------
+    fishcast : `FishLSS.fisherForecast.fisherForecast`
+        Forecast object.
+    z : float
+        Redshift.
+    b : float, optional
+        Eulerian linear bias. If not specified, the results of `compute_b` are used.
+        Default: None.
+
+    Returns
+    -------
+    bL : float
+        Value of bL.
+    """
+    if b is None:
+        b = compute_b(fishcast, z)
+    return b - 1
+
+
+def compute_b2L(fishcast, z, b=None, b2=None):
+    """Compute Lagrangian quadratic bias b2L at redshift z.
+
+    Parameters
+    ----------
+    fishcast : `FishLSS.fisherForecast.fisherForecast`
+        Forecast object.
+    z : float
+        Redshift.
+    b : float, optional
+        Eulerian linear bias. If not specified, the results of `compute_b` are used.
+        Default: None.
+    b2 : float, optional
+        Eulerian quadratic bias. If not specified, the results of `compute_b2` are used.
+        Default: None
+
+    Returns
+    -------
+    b2L : float
+        Value of b2L.
+    """
+    if b is None:
+        b = compute_b(fishcast, z)
+    if b2 is None:
+        b2 = compute_b2(fishcast, z, b=b)
+    return b2 - 8 * (b - 1) / 21
+
+
+def compute_bsL(fishcast, z, b=None, bs=None):
+    """Compute Lagrangian tidal bias bsL at redshift z.
+
+    Parameters
+    ----------
+    fishcast : `FishLSS.fisherForecast.fisherForecast`
+        Forecast object.
+    z : float
+        Redshift.
+    b : float, optional
+        Eulerian linear bias. If not specified, the results of `compute_b` are used.
+        Default: None.
+    bs : float, optional
+        Eulerian tidal bias. If not specified, the results of `compute_bs` are used.
+        Default: None
+
+    Returns
+    -------
+    bsL : float
+        Value of bsL.
+    """
+    if b is None:
+        b = compute_b(fishcast, z)
+    if bs is None:
+        bs = compute_bs(fishcast, z, b=b)
+    return bs + 2 * (b - 1) / 7
 
 
 #################################################################################################
@@ -210,8 +356,8 @@ def compute_tracer_power_spectrum(
     fishcast,
     z,
     b=None,
-    b2=-1,
-    bs=-1,
+    b2=None,
+    bs=None,
     alpha0=-1,
     alpha2=0,
     alpha4=0.0,
@@ -249,14 +395,13 @@ def compute_tracer_power_spectrum(
 
     if b is None:
         b = compute_b(fishcast, z)
-    if b2 == -1 and exp.b2 is not None:
-        b2 = exp.b2(z)
+    if b2 is None:
+        b2 = compute_b2(fishcast, z, b=b)
+    if bs is None:
+        bs = compute_bs(fishcast, z, b=b)
     if alpha0 == -1.0 and exp.alpha0 is not None:
         alpha0 = exp.alpha0(z)
-    elif b2 == -1:
-        b2 = 8 * (b - 1) / 21
-    if bs == -1:
-        bs = -2 * (b - 1) / 7
+
     if f == -1.0:
         f = fishcast.cosmo.scale_independent_growth_factor_f(z)
     if A_lin == -1.0:
@@ -313,11 +458,11 @@ def compute_tracer_power_spectrum(
         return result
 
     if bL1 is None:
-        bL1 = b - 1.0
+        bL1 = compute_bL(fishcast, z, b=b)
     if bL2 is None:
-        bL2 = b2 - 8 * (b - 1) / 21
+        bL2 = compute_b2L(fishcast, z, b=b, b2=b2)
     if bLs is None:
-        bLs = bs + 2 * (b - 1) / 7
+        bLs = compute_bsL(fishcast, z, b=b, bs=bs)
 
     biases = [bL1, bL2, bLs, 0.0]
     cterms = [alpha0, alpha2, alpha4, alpha6]
@@ -356,8 +501,8 @@ def compute_real_space_cross_power(
     z,
     gamma=1.0,
     b=None,
-    b2=-1,
-    bs=-1,
+    b2=None,
+    bs=None,
     alpha0=-1,
     alphax=0,
     N=None,
@@ -369,10 +514,10 @@ def compute_real_space_cross_power(
     """
     if b is None:
         b = compute_b(fishcast, z)
-    if b2 == -1:
-        b2 = 8 * (b - 1) / 21
-    if bs == -1:
-        bs = -2 * (b - 1) / 7
+    if b2 is None:
+        b2 = compute_b2(fishcast, z, b=b)
+    if bs is None:
+        bs = compute_b2(fishcast, z, b=b)
     if alpha0 == -1:
         if z < 6:
             alpha0 = 1.22 + 0.24 * b**2 * (z - 5.96)
@@ -419,9 +564,9 @@ def compute_real_space_cross_power(
         for op_i in [6, 9, 10]:
             cleft.pktable[:, op_i] -= cleft.pktable[0, op_i]
 
-    bL1 = b - 1.0
-    bL2 = b2 - 8 * (b - 1) / 21
-    bLs = bs + 2 * (b - 1) / 7
+    bL1 = compute_bL(fishcast, z, b=b)
+    bL2 = compute_b2L(fishcast, z, b=b, b2=b2)
+    bLs = compute_bsL(fishcast, z, b=b, bs=bs)
 
     if X == Y and X == "g":
         # For HI, N will be packed as [z, k*mu], but we just want [k], so we manually
@@ -460,8 +605,8 @@ def compute_lensing_Cell(
     zmid=None,
     gamma=1.0,
     b=None,
-    b2=-1,
-    bs=-1,
+    b2=None,
+    bs=None,
     alpha0=-1,
     alphax=0.0,
     N=-1,
@@ -502,17 +647,17 @@ def compute_lensing_Cell(
     if b is None:
         b = b_fid
 
-    b2_fid = 8 * (b_fid - 1) / 21
-    bs_fid = -2 * (b_fid - 1) / 7
+    b2_fid = compute_b2(fishcast, zmid, b=b_fid)
+    bs_fid = compute_bs(fishcast, zmid, b=b_fid)
     if zmid < 6:
         alpha0_fid = 1.22 + 0.24 * b**2 * (zmid - 5.96)
     else:
         alpha0_fid = 0.0
     N_fid = 1 / compute_n(fishcast, zmid)
 
-    if b2 == -1:
+    if b2 is None:
         b2 = b2_fid
-    if bs == -1:
+    if bs is None:
         bs = bs_fid
     if alpha0 == -1:
         alpha0 = alpha0_fid
@@ -592,8 +737,8 @@ def compute_lensing_Cell(
     )
 
     bz = lambda z: compute_b(fishcast, z) * b / b_fid
-    b2z = lambda z: 8 * (compute_b(fishcast, z) - 1) / 21 * b2 / b2_fid
-    bsz = lambda z: -2 * (compute_b(fishcast, z) - 1) / 7 * bs / bs_fid
+    b2z = lambda z: compute_b2(fishcast, z, b=None) * b2 / b2_fid
+    bsz = lambda z: compute_bs(fishcast, z, b=None) * bs / bs_fid
 
     def alpha0z(z):
         if z < 6:
@@ -649,7 +794,7 @@ def compute_lensing_Cell(
     return np.array([result(l) for l in fishcast.ell])
 
 
-def compute_recon_power_spectrum(fishcast, z, b=None, b2=-1.0, bs=-1.0, N=None):
+def compute_recon_power_spectrum(fishcast, z, b=None, b2=None, bs=None, N=None):
     """
     Returns the reconstructed power spectrum, following Stephen's paper.
 
@@ -657,17 +802,17 @@ def compute_recon_power_spectrum(fishcast, z, b=None, b2=-1.0, bs=-1.0, N=None):
     """
     if b is None:
         b = compute_b(fishcast, z)
-    if b2 == -1:
-        b2 = 8 * (b - 1) / 21
-    if bs == -1:
-        bs = -2 * (b - 1) / 7
+    if b2 is None:
+        b2 = compute_b2(fishcast, z, b=b)
+    if bs is None:
+        bs = compute_bs(fishcast, z, b=b)
     if N is None:
         N = 1 / compute_n(fishcast, z)
     f = fishcast.cosmo.scale_independent_growth_factor_f(z)
 
-    bL1 = b - 1.0
-    bL2 = b2 - 8 * (b - 1) / 21
-    bLs = bs + 2 * (b - 1) / 7
+    bL1 = compute_bL(fishcast, z, b=b)
+    bL2 = compute_b2L(fishcast, z, b=b, b2=b2)
+    bLs = compute_bsL(fishcast, z, b=b, bs=bs)
 
     K, MU = fishcast.k, fishcast.mu
     h = fishcast.params["h"]

@@ -25,7 +25,8 @@ class experiment(object):
         # Galaxy bias, float (constant b) or function of z
         # Must be specified if none of the survey-specific flags below are used
         b=None,
-        b2=None,  #
+        b2=None,
+        bs=None,
         alpha0=None,  #
         LBG=False,  #
         HI=False,  #
@@ -76,6 +77,7 @@ class experiment(object):
         else:
             self.n = None
 
+        # Bias/stochastic parameters.
         # If the bias is not a float, assumed to be a function of z
         if b is not None:
             if not isinstance(b, float):
@@ -85,8 +87,22 @@ class experiment(object):
         else:
             self.b = None
 
-        # Bias/stochastic parameters
-        self.b2 = b2
+        if b2 is not None:
+            if not isinstance(b2, float):
+                self.b2 = b2
+            else:
+                self.b2 = lambda z: b2 + 0.0 * z
+        else:
+            self.b2 = None
+
+        if bs is not None:
+            if not isinstance(bs, float):
+                self.bs = bs
+            else:
+                self.bs = lambda z: bs + 0.0 * z
+        else:
+            self.bs = None
+
         self.alpha0 = alpha0
 
         # Assumption for k_nl(z) (function itself is defined in fisherForecast).
