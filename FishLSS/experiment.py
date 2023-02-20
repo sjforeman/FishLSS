@@ -73,7 +73,7 @@ class experiment(object):
             if not isinstance(n, float):
                 self.n = n
             else:
-                self.n = lambda z: n + 0.0 * z
+                self.n = lambda z: n
         else:
             self.n = None
 
@@ -83,7 +83,7 @@ class experiment(object):
             if not isinstance(b, float):
                 self.b = b
             else:
-                self.b = lambda z: b + 0.0 * z
+                self.b = lambda z: b
         else:
             self.b = None
 
@@ -91,7 +91,7 @@ class experiment(object):
             if not isinstance(b2, float):
                 self.b2 = b2
             else:
-                self.b2 = lambda z: b2 + 0.0 * z
+                self.b2 = lambda z: b2
         else:
             self.b2 = None
 
@@ -99,7 +99,7 @@ class experiment(object):
             if not isinstance(bs, float):
                 self.bs = bs
             else:
-                self.bs = lambda z: bs + 0.0 * z
+                self.bs = lambda z: bs
         else:
             self.bs = None
 
