@@ -387,11 +387,7 @@ def compute_tracer_power_spectrum(
     """
     exp = fishcast.experiment
     if fishcast.recon:
-        if subtract_quadratic_lowk_constants:
-            warnings.warn(
-                "Constant-term subtraction not implemented when using reconstruction!"
-            )
-        return compute_recon_power_spectrum(fishcast, z, b=b, b2=b2, bs=bs, N=N)
+        return compute_recon_power_spectrum(fishcast, z, b=b, b2=b2, bs=bs, N=N, subtract_quadratic_lowk_constants=subtract_quadratic_lowk_constants)
 
     if b is None:
         b = compute_b(fishcast, z)
@@ -794,7 +790,7 @@ def compute_lensing_Cell(
     return np.array([result(l) for l in fishcast.ell])
 
 
-def compute_recon_power_spectrum(fishcast, z, b=None, b2=None, bs=None, N=None):
+def compute_recon_power_spectrum(fishcast, z, b=None, b2=None, bs=None, N=None, subtract_quadratic_lowk_constants=False):
     """
     Returns the reconstructed power spectrum, following Stephen's paper.
 
@@ -825,6 +821,12 @@ def compute_recon_power_spectrum(fishcast, z, b=None, b2=None, bs=None, N=None):
     kSparse, p0ktable, p2ktable, p4ktable = zelda.make_pltable(
         f, ngauss=3, kmin=min(K), kmax=max(K), nk=200, method="RecSym"
     )
+    # If desired, subtract low-k limits of b2^2 (index 5), b2*bs (index 8), and
+    # bs^2 (index 9) terms
+    if subtract_quadratic_lowk_constants:
+        for op_i in [5, 8, 9]:
+            p0ktable[:, op_i] -= p0ktable[0, op_i]
+
     bias_factors = np.array(
         [
             1,
