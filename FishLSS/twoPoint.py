@@ -387,7 +387,15 @@ def compute_tracer_power_spectrum(
     """
     exp = fishcast.experiment
     if fishcast.recon:
-        return compute_recon_power_spectrum(fishcast, z, b=b, b2=b2, bs=bs, N=N, subtract_quadratic_lowk_constants=subtract_quadratic_lowk_constants)
+        return compute_recon_power_spectrum(
+            fishcast,
+            z,
+            b=b,
+            b2=b2,
+            bs=bs,
+            N=N,
+            subtract_quadratic_lowk_constants=subtract_quadratic_lowk_constants,
+        )
 
     if b is None:
         b = compute_b(fishcast, z)
@@ -790,7 +798,15 @@ def compute_lensing_Cell(
     return np.array([result(l) for l in fishcast.ell])
 
 
-def compute_recon_power_spectrum(fishcast, z, b=None, b2=None, bs=None, N=None, subtract_quadratic_lowk_constants=False):
+def compute_recon_power_spectrum(
+    fishcast,
+    z,
+    b=None,
+    b2=None,
+    bs=None,
+    N=None,
+    subtract_quadratic_lowk_constants=False,
+):
     """
     Returns the reconstructed power spectrum, following Stephen's paper.
 
