@@ -109,7 +109,11 @@ def compute_b(fishcast, z):
         return MSEb(fishcast, z)
     if exp.Roman and not custom:
         return Romanb(z)
-    return exp.b(z)
+
+    try:
+        return exp.b(z)
+    except:
+        raise RuntimeError(f"Error computing b1 at z = {z}")
 
 
 def compute_b2(fishcast, z, b=None):
@@ -371,6 +375,7 @@ def compute_tracer_power_spectrum(
     phi_lin=-1.0,
     kIR=0.2,
     moments=False,
+    return_biases=False,
     bL1=None,
     bL2=None,
     bLs=None,
@@ -484,7 +489,10 @@ def compute_tracer_power_spectrum(
 
     k, p0, p2, p4 = lpt.combine_bias_terms_pkell(pars)
     if moments:
-        return k, p0, p2, p4
+        if return_biases:
+            return k, p0, p2, p4, biases
+        else:
+            return k, p0, p2, p4
     p0 = np.repeat(p0, fishcast.Nmu)
     p2 = np.repeat(p2, fishcast.Nmu)
     p4 = np.repeat(p4, fishcast.Nmu)
