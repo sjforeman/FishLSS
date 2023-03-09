@@ -1451,95 +1451,129 @@ class fisherForecast(object):
             else:
                 continue
 
-    def compute_Cl_derivatives(self, five_point=True, overwrite=False):
+    def compute_Cl_derivatives(
+        self,
+        five_point=True,
+        overwrite=False,
+        verbose=False,
+        n_partitions=None,
+        partition=None,
+    ):
         """
         Calculates the derivatives of Ckk, Ckg, and Cgg with respect to
         each of the marg_params.
-        """
-        zs = self.experiment.zedges
-        for marg_param in self.marg_params:
-            #
-            if marg_param != "gamma":
-                filename = "Ckk_" + marg_param + ".txt"
-                fname = self.out_dir + "/derivatives_Cl/" + filename
-                if not exists(fname) or overwrite:
-                    dCdp = self.compute_dCdp(
-                        marg_param, "k", "k", five_point=five_point
-                    )
-                    np.savetxt(fname, dCdp)
-                else:
-                    continue
-            else:
-                for i, z in enumerate(zs[:-1]):
-                    filename = (
-                        "Ckk_"
-                        + marg_param
-                        + "_"
-                        + str(int(100 * zs[i]))
-                        + "_"
-                        + str(int(100 * zs[i + 1]))
-                        + ".txt"
-                    )
-                    fname = self.out_dir + "/derivatives_Cl/" + filename
-                    if not exists(fname) or overwrite:
-                        dCdp = self.compute_dCdp(
-                            marg_param,
-                            "k",
-                            "k",
-                            zmin=zs[i],
-                            zmax=zs[i + 1],
-                            five_point=five_point,
-                        )
-                        np.savetxt(fname, dCdp)
-                    else:
-                        continue
-            #
-            for i, z in enumerate(zs[:-1]):
-                filename = (
-                    "Cgg_"
-                    + marg_param
-                    + "_"
-                    + str(int(100 * zs[i]))
-                    + "_"
-                    + str(int(100 * zs[i + 1]))
-                    + ".txt"
-                )
-                fname = self.out_dir + "/derivatives_Cl/" + filename
-                if not exists(fname) or overwrite:
-                    dCdp = self.compute_dCdp(
-                        marg_param,
-                        "g",
-                        "g",
-                        zmin=zs[i],
-                        zmax=zs[i + 1],
-                        five_point=five_point,
-                    )
-                    np.savetxt(fname, dCdp)
-                else:
-                    continue
 
+        Derivatives are saved to the {out_dir}/Cl_derivatives directory.
+
+        If n_partitions and partition are specified, compute only a subset of the
+        derivatives, of size ~ n_partitions/(n_parameters * n_z).
+        """
+
+        # If partitions not specified, use 1 partition
+        if n_partitions is None:
+            n_partitions = 1
+            partition = 0
+        else:
+            if partition is None:
+                raise InputError("Need to specify partition if n_partitions is set!")
+
+        # Make list of (z_index, par_index), and find the partition we'll compute for
+        zs = self.experiment.zcenters
+        marg_params = self.marg_params
+        z_par_multidx = np.array(
+            [[i, j] for i in range(len(zs)) for j in range(len(marg_params))]
+        )
+        z_par_multidx = mpiutil.partition_list(z_par_multidx, partition, n_partitions)
+
+        if verbose:
+            print(f"Partition {partition}: Computing {len(z_par_multidx)} derivatives")
+
+        zedges = self.experiment.zedges
+
+        # Loop through each (z,p) pair in partition
+        for idxi, idx in enumerate(z_par_multidx):
+            zi, z, p = idx[0], zs[idx[0]], marg_params[idx[1]]
+
+            if verbose:
+                print(
+                    f"Partition {partition}: Computing {idxi}/{len(z_par_multidx)}:"
+                    f" z = {z}, {p}"
+                )
+
+            # Compute kk derivative.
+            # If not computing for gamma, this derivative is independent of z.
+            # We don't recompute the derivative if the file already exists
+            if p != "gamma":
+                filename = "Ckk_" + p + ".txt"
+                fname = self.out_dir + "/derivatives_Cl/" + filename
+                if not exists(fname) or overwrite:
+                    dCdp = self.compute_dCdp(p, "k", "k", five_point=five_point)
+                    np.savetxt(fname, dCdp)
+            else:
                 filename = (
-                    "Ckg_"
-                    + marg_param
+                    "Ckk_"
+                    + p
                     + "_"
-                    + str(int(100 * zs[i]))
+                    + str(int(100 * zedges[zi]))
                     + "_"
-                    + str(int(100 * zs[i + 1]))
+                    + str(int(100 * zedges[zi + 1]))
                     + ".txt"
                 )
                 fname = self.out_dir + "/derivatives_Cl/" + filename
                 if not exists(fname) or overwrite:
                     dCdp = self.compute_dCdp(
-                        marg_param,
+                        p,
                         "k",
-                        "g",
-                        zmin=zs[i],
-                        zmax=zs[i + 1],
+                        "k",
+                        zmin=zedges[zi],
+                        zmax=zedges[zi + 1],
                         five_point=five_point,
                     )
                     np.savetxt(fname, dCdp)
-                else:
-                    continue
+
+            # Compute gg derivative
+            filename = (
+                "Cgg_"
+                + p
+                + "_"
+                + str(int(100 * zedges[zi]))
+                + "_"
+                + str(int(100 * zedges[zi + 1]))
+                + ".txt"
+            )
+            fname = self.out_dir + "/derivatives_Cl/" + filename
+            if not exists(fname) or overwrite:
+                dCdp = self.compute_dCdp(
+                    p,
+                    "g",
+                    "g",
+                    zmin=zedges[zi],
+                    zmax=zedges[zi + 1],
+                    five_point=five_point,
+                )
+                np.savetxt(fname, dCdp)
+
+            # Compute kg derivative
+            filename = (
+                "Ckg_"
+                + p
+                + "_"
+                + str(int(100 * zedges[zi]))
+                + "_"
+                + str(int(100 * zedges[zi + 1]))
+                + ".txt"
+            )
+            fname = self.out_dir + "/derivatives_Cl/" + filename
+            if not exists(fname) or overwrite:
+                dCdp = self.compute_dCdp(
+                    p,
+                    "k",
+                    "g",
+                    zmin=zedges[zi],
+                    zmax=zedges[zi + 1],
+                    five_point=five_point,
+                )
+                np.savetxt(fname, dCdp)
 
     def check_derivatives(self):
         """
