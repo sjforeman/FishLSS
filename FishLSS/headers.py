@@ -28,6 +28,7 @@ import pyfftw
 from classy import Class
 from velocileptors.LPT.lpt_rsd_fftw import LPT_RSD
 
+import FishLSS
 from .experiment import *
 from .fisherForecast import *
 from .bao_recon.loginterp import loginterp

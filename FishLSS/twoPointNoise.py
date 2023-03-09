@@ -79,19 +79,24 @@ def covariance_Cls(fishcast, kmax_knl=1.0, CMB="SO"):
     zs = fishcast.experiment.zcenters
     zes = fishcast.experiment.zedges
     # Lensing noise
+    input_dir = os.path.join(os.path.dirname(FishLSS.__file__), "../input/")
     if CMB == "SO":
         data = np.genfromtxt(
-            "input/nlkk_v3_1_0deproj0_SENS2_fsky0p4_it_lT30-3000_lP30-5000.dat"
+            os.path.join(
+                input_dir, "nlkk_v3_1_0deproj0_SENS2_fsky0p4_it_lT30-3000_lP30-5000.dat"
+            )
         )
         l, N = data[:, 0], data[:, 7]
     elif CMB == "Planck":
-        data = np.genfromtxt("input/nlkk_planck.dat")
+        data = np.genfromtxt(os.path.join(input_dir, "nlkk_planck.dat"))
         l, N = data[:, 0], data[:, 1]
     elif CMB == "Perfect":
         l, N = fishcast.ell, fishcast.ell * 0
     else:
         data = np.genfromtxt(
-            "input/S4_kappa_deproj0_sens0_16000_lT30-3000_lP30-5000.dat"
+            os.path.join(
+                input_dir, "S4_kappa_deproj0_sens0_16000_lT30-3000_lP30-5000.dat"
+            )
         )
         l, N = data[:, 0], data[:, 7]
 
