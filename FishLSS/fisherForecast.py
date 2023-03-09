@@ -1458,6 +1458,7 @@ class fisherForecast(object):
         verbose=False,
         n_partitions=None,
         partition=None,
+        only_kk=False,
     ):
         """
         Calculates the derivatives of Ckk, Ckg, and Cgg with respect to
@@ -1531,49 +1532,50 @@ class fisherForecast(object):
                     )
                     np.savetxt(fname, dCdp)
 
-            # Compute gg derivative
-            filename = (
-                "Cgg_"
-                + p
-                + "_"
-                + str(int(100 * zedges[zi]))
-                + "_"
-                + str(int(100 * zedges[zi + 1]))
-                + ".txt"
-            )
-            fname = self.out_dir + "/derivatives_Cl/" + filename
-            if not exists(fname) or overwrite:
-                dCdp = self.compute_dCdp(
-                    p,
-                    "g",
-                    "g",
-                    zmin=zedges[zi],
-                    zmax=zedges[zi + 1],
-                    five_point=five_point,
+            if not only_kk:
+                # Compute gg derivative
+                filename = (
+                    "Cgg_"
+                    + p
+                    + "_"
+                    + str(int(100 * zedges[zi]))
+                    + "_"
+                    + str(int(100 * zedges[zi + 1]))
+                    + ".txt"
                 )
-                np.savetxt(fname, dCdp)
+                fname = self.out_dir + "/derivatives_Cl/" + filename
+                if not exists(fname) or overwrite:
+                    dCdp = self.compute_dCdp(
+                        p,
+                        "g",
+                        "g",
+                        zmin=zedges[zi],
+                        zmax=zedges[zi + 1],
+                        five_point=five_point,
+                    )
+                    np.savetxt(fname, dCdp)
 
-            # Compute kg derivative
-            filename = (
-                "Ckg_"
-                + p
-                + "_"
-                + str(int(100 * zedges[zi]))
-                + "_"
-                + str(int(100 * zedges[zi + 1]))
-                + ".txt"
-            )
-            fname = self.out_dir + "/derivatives_Cl/" + filename
-            if not exists(fname) or overwrite:
-                dCdp = self.compute_dCdp(
-                    p,
-                    "k",
-                    "g",
-                    zmin=zedges[zi],
-                    zmax=zedges[zi + 1],
-                    five_point=five_point,
+                # Compute kg derivative
+                filename = (
+                    "Ckg_"
+                    + p
+                    + "_"
+                    + str(int(100 * zedges[zi]))
+                    + "_"
+                    + str(int(100 * zedges[zi + 1]))
+                    + ".txt"
                 )
-                np.savetxt(fname, dCdp)
+                fname = self.out_dir + "/derivatives_Cl/" + filename
+                if not exists(fname) or overwrite:
+                    dCdp = self.compute_dCdp(
+                        p,
+                        "k",
+                        "g",
+                        zmin=zedges[zi],
+                        zmax=zedges[zi + 1],
+                        five_point=five_point,
+                    )
+                    np.savetxt(fname, dCdp)
 
     def check_derivatives(self):
         """
@@ -1781,10 +1783,15 @@ class fisherForecast(object):
         result = self.shuffle_fisher(result, globe, Nz=len(zbins))
         return result
 
-    def load_lensing_derivatives(self, param, param_index, globe, zbin_index):
+    def load_lensing_derivatives(
+        self, param, param_index, globe, zbin_index, only_kk=False
+    ):
         """
         Loads the derivative of (Ckk, Ckgi, Cgigi), i = 1 , 2, ..., Nz
         with respect to param.
+
+        If only_kk is True, output derivative array has shape as only_kk=False, but
+        gg and kg entries are zero.
         """
         n = self.experiment.nbins
         zs = self.experiment.zedges
@@ -1794,29 +1801,32 @@ class fisherForecast(object):
         # then only take derivatives wrt C^{\kappa g_m} and
         # C^{g_m g_m}, where m = zbin_index+1
         # alphax and alphaa are always assumed to be local
-        if param_index >= globe:
-            m = zbin_index + 1
-            filename = (
-                "Ckg_"
-                + param
-                + "_"
-                + str(int(100 * zs[m - 1]))
-                + "_"
-                + str(int(100 * zs[m]))
-                + ".txt"
-            )
-            result[m] = np.genfromtxt(self.out_dir + "/derivatives_Cl/" + filename)
-            filename = (
-                "Cgg_"
-                + param
-                + "_"
-                + str(int(100 * zs[m - 1]))
-                + "_"
-                + str(int(100 * zs[m]))
-                + ".txt"
-            )
-            result[m + n] = np.genfromtxt(self.out_dir + "/derivatives_Cl/" + filename)
-            return result
+        if not only_kk:
+            if param_index >= globe:
+                m = zbin_index + 1
+                filename = (
+                    "Ckg_"
+                    + param
+                    + "_"
+                    + str(int(100 * zs[m - 1]))
+                    + "_"
+                    + str(int(100 * zs[m]))
+                    + ".txt"
+                )
+                result[m] = np.genfromtxt(self.out_dir + "/derivatives_Cl/" + filename)
+                filename = (
+                    "Cgg_"
+                    + param
+                    + "_"
+                    + str(int(100 * zs[m - 1]))
+                    + "_"
+                    + str(int(100 * zs[m]))
+                    + ".txt"
+                )
+                result[m + n] = np.genfromtxt(
+                    self.out_dir + "/derivatives_Cl/" + filename
+                )
+                return result
 
         if not "gamma" in param:
             result[0] = np.genfromtxt(
@@ -1832,52 +1842,56 @@ class fisherForecast(object):
                 + ".txt"
             )
             result[0] = np.genfromtxt(self.out_dir + "/derivatives_Cl/" + filename)
-        for i in range(1, n + 1):
-            if "gamma" in param:
-                idx = int(param[-1])
-                filename = (
-                    "Ckg_gamma_"
-                    + str(int(100 * zs[idx - 1]))
-                    + "_"
-                    + str(int(100 * zs[idx]))
-                    + ".txt"
-                )
-                result[idx] = np.genfromtxt(
-                    self.out_dir + "/derivatives_Cl/" + filename
-                )
-                filename = (
-                    "Cgg_gamma_"
-                    + str(int(100 * zs[idx - 1]))
-                    + "_"
-                    + str(int(100 * zs[idx]))
-                    + ".txt"
-                )
-                result[idx + n] = np.genfromtxt(
-                    self.out_dir + "/derivatives_Cl/" + filename
-                )
-            else:
-                filename = (
-                    "Ckg_"
-                    + param
-                    + "_"
-                    + str(int(100 * zs[i - 1]))
-                    + "_"
-                    + str(int(100 * zs[i]))
-                    + ".txt"
-                )
-                result[i] = np.genfromtxt(self.out_dir + "/derivatives_Cl/" + filename)
-                filename = (
-                    "Cgg_"
-                    + param
-                    + "_"
-                    + str(int(100 * zs[i - 1]))
-                    + "_"
-                    + str(int(100 * zs[i]))
-                    + ".txt"
-                )
-                result[i + n] = np.genfromtxt(
-                    self.out_dir + "/derivatives_Cl/" + filename
-                )
+
+        if not only_kk:
+            for i in range(1, n + 1):
+                if "gamma" in param:
+                    idx = int(param[-1])
+                    filename = (
+                        "Ckg_gamma_"
+                        + str(int(100 * zs[idx - 1]))
+                        + "_"
+                        + str(int(100 * zs[idx]))
+                        + ".txt"
+                    )
+                    result[idx] = np.genfromtxt(
+                        self.out_dir + "/derivatives_Cl/" + filename
+                    )
+                    filename = (
+                        "Cgg_gamma_"
+                        + str(int(100 * zs[idx - 1]))
+                        + "_"
+                        + str(int(100 * zs[idx]))
+                        + ".txt"
+                    )
+                    result[idx + n] = np.genfromtxt(
+                        self.out_dir + "/derivatives_Cl/" + filename
+                    )
+                else:
+                    filename = (
+                        "Ckg_"
+                        + param
+                        + "_"
+                        + str(int(100 * zs[i - 1]))
+                        + "_"
+                        + str(int(100 * zs[i]))
+                        + ".txt"
+                    )
+                    result[i] = np.genfromtxt(
+                        self.out_dir + "/derivatives_Cl/" + filename
+                    )
+                    filename = (
+                        "Cgg_"
+                        + param
+                        + "_"
+                        + str(int(100 * zs[i - 1]))
+                        + "_"
+                        + str(int(100 * zs[i]))
+                        + ".txt"
+                    )
+                    result[i + n] = np.genfromtxt(
+                        self.out_dir + "/derivatives_Cl/" + filename
+                    )
         return result
 
     def gen_lensing_fisher(
@@ -1894,7 +1908,7 @@ class fisherForecast(object):
     ):
         """ """
         n = len(basis)
-        C = covariance_Cls(self, kmax_knl=kmax_knl, CMB=CMB)
+        C = covariance_Cls(self, kmax_knl=kmax_knl, CMB=CMB, only_kk=only_kk)
         Nz = self.experiment.nbins
         loc = n - globe
         N = globe + loc * Nz
@@ -1910,12 +1924,14 @@ class fisherForecast(object):
         result = np.zeros((N, N))
         derivs = np.zeros((N, Np, len(self.ell)))
         for i in range(globe):
-            derivs[i] = self.load_lensing_derivatives(basis[i], i, globe, 0)
+            derivs[i] = self.load_lensing_derivatives(
+                basis[i], i, globe, 0, only_kk=only_kk
+            )
         for i in range(globe, N):
             param_index = globe + (i - globe) // Nz
             zbin_index = (i - globe) % Nz
             derivs[i] = self.load_lensing_derivatives(
-                basis[param_index], param_index, globe, zbin_index
+                basis[param_index], param_index, globe, zbin_index, only_kk=only_kk
             )
 
         start = np.where(self.ell >= ell_min)[0][0]

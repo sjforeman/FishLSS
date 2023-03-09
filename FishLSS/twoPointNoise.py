@@ -73,8 +73,10 @@ def compute_covariance_matrix(fishcast, zbin_index, nratio=1):
     return np.maximum(C, 1e-50)
 
 
-def covariance_Cls(fishcast, kmax_knl=1.0, CMB="SO"):
-    """ """
+def covariance_Cls(fishcast, kmax_knl=1.0, CMB="SO", only_kk=False):
+    """
+    if only_kk, output C has shape (1, 1, n_ell), otherwise (n_z, n_z, n_ell)
+    """
     n = fishcast.experiment.nbins
     zs = fishcast.experiment.zcenters
     zes = fishcast.experiment.zedges
@@ -115,36 +117,42 @@ def covariance_Cls(fishcast, kmax_knl=1.0, CMB="SO"):
     for i in range(n):
         constraint[i][idx[i]] *= 1e10
     # build covariance matrix
-    C = np.zeros((2 * n + 1, 2 * n + 1, len(l)))
+    if only_kk:
+        C = np.zeros((1, 1, len(l)))
+    else:
+        C = np.zeros((2 * n + 1, 2 * n + 1, len(l)))
     fsky = min(fishcast.experiment.fsky, 0.4)
     #
     Ckk = fishcast.Ckk_fid
     # kk, kk
     C[0, 0] = 2 * (Ckk + Nkk) ** 2 / (2 * l + 1)
-    for i in range(n):
-        Ckgi = fishcast.Ckg_fid[i]
-        # kk, kg
-        C[i + 1, 0] = 2 * (Ckk + Nkk) * Ckgi / (2 * l + 1) * constraint[i]
-        C[0, i + 1] = C[i + 1, 0]
-        # kk, gg
-        C[i + 1 + n, 0] = 2 * Ckgi**2 / (2 * l + 1) * constraint[i]
-        C[0, i + 1 + n] = C[i + 1 + n, 0]
-        for j in range(n):
-            Ckgj = fishcast.Ckg_fid[j]
-            Cgigi = fishcast.Cgg_fid[i]
-            Cgjgj = fishcast.Cgg_fid[j]
-            # kgi, kgj
-            C[i + 1, j + 1] = Ckgi * Ckgj * constraint[i] * constraint[j]
-            if i == j:
-                C[i + 1, j + 1] += (Ckk + Nkk) * Cgigi * constraint[i]
-            C[i + 1, j + 1] /= 2 * l + 1
-            # gigi, gjgj
-            if i == j:
-                C[i + 1 + n, j + 1 + n] = 2 * Cgigi**2 / (2 * l + 1) * constraint[i]
-            # kgi, gjgj
-            if i == j:
-                C[i + 1, i + 1 + n] = 2 * Cgigi * Ckgi / (2 * l + 1) * constraint[i]
-                C[i + 1 + n, i + 1] = C[i + 1, i + 1 + n]
+    if not only_kk:
+        for i in range(n):
+            Ckgi = fishcast.Ckg_fid[i]
+            # kk, kg
+            C[i + 1, 0] = 2 * (Ckk + Nkk) * Ckgi / (2 * l + 1) * constraint[i]
+            C[0, i + 1] = C[i + 1, 0]
+            # kk, gg
+            C[i + 1 + n, 0] = 2 * Ckgi**2 / (2 * l + 1) * constraint[i]
+            C[0, i + 1 + n] = C[i + 1 + n, 0]
+            for j in range(n):
+                Ckgj = fishcast.Ckg_fid[j]
+                Cgigi = fishcast.Cgg_fid[i]
+                Cgjgj = fishcast.Cgg_fid[j]
+                # kgi, kgj
+                C[i + 1, j + 1] = Ckgi * Ckgj * constraint[i] * constraint[j]
+                if i == j:
+                    C[i + 1, j + 1] += (Ckk + Nkk) * Cgigi * constraint[i]
+                C[i + 1, j + 1] /= 2 * l + 1
+                # gigi, gjgj
+                if i == j:
+                    C[i + 1 + n, j + 1 + n] = (
+                        2 * Cgigi**2 / (2 * l + 1) * constraint[i]
+                    )
+                # kgi, gjgj
+                if i == j:
+                    C[i + 1, i + 1 + n] = 2 * Cgigi * Ckgi / (2 * l + 1) * constraint[i]
+                    C[i + 1 + n, i + 1] = C[i + 1, i + 1 + n]
     C /= fsky
     C[0, 0] *= fsky / 0.4
     return C
