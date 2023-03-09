@@ -1905,10 +1905,19 @@ class fisherForecast(object):
         kk=True,
         only_kk=False,
         bins=None,
+        fsky_CMB=0.4,
+        fsky_intersect=None,
     ):
         """ """
         n = len(basis)
-        C = covariance_Cls(self, kmax_knl=kmax_knl, CMB=CMB, only_kk=only_kk)
+        C = covariance_Cls(
+            self,
+            kmax_knl=kmax_knl,
+            CMB=CMB,
+            only_kk=only_kk,
+            fsky_CMB=fsky_CMB,
+            fsky_intersect=fsky_intersect,
+        )
         Nz = self.experiment.nbins
         loc = n - globe
         N = globe + loc * Nz
