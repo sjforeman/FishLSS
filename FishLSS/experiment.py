@@ -127,7 +127,9 @@ class experiment(object):
         # HI stochasticity model
         self.HI_stoch_model = HI_stoch_model
 
-        if HI_stoch_model in ["obuljen_TNG", "obuljen_TNG_white"]:
+        if HI_stoch_model in [
+            "obuljen_TNG", "obuljen_TNG_sampling_white", "obuljen_TNG_Perr_white"
+        ]:
             # If using Obuljen models, read simulation measurements from disk, and
             # define interpolating functions
             obuljen_data = obuljen.get_TNG_Pstoch_models(
@@ -144,7 +146,7 @@ class experiment(object):
                 # HI_stoch_function returns a 1d array, evaluated at the single input z
                 # and array of input k values
                 self.HI_stoch_function = self.HI_stoch_interpolator.evaluate
-            else:
+            elif HI_stoch_model == "obuljen_TNG_sampling_white":
                 self.HI_stoch_function = interp1d(
                     obuljen_data["z"],
                     obuljen_data["Pstoch_values_white"],
@@ -154,11 +156,21 @@ class experiment(object):
                         obuljen_data["Pstoch_values_white"][-1],
                     ),
                 )
+            elif HI_stoch_model == "obuljen_TNG_Perr_white":
+                self.HI_stoch_function = interp1d(
+                    obuljen_data["z"],
+                    obuljen_data["Perr_values_white"],
+                    bounds_error=False,
+                    fill_value=(
+                        obuljen_data["Perr_values_white"][0],
+                        obuljen_data["Perr_values_white"][-1],
+                    ),
+                )
         self.HI_stoch_multiplier = HI_stoch_multiplier
 
         # HI sampling noise model
         self.HI_sampling_model = HI_sampling_model
-        if HI_sampling_model == "obuljen_TNG_white":
+        if HI_sampling_model == "obuljen_TNG_sampling_white":
             # If using Obuljen TNG sampling noise model, read simulation measurements
             # from disk and define interpolating function
             obuljen_data = obuljen.get_TNG_Pstoch_models(
@@ -208,7 +220,9 @@ class experiment(object):
             result = self.HI_stoch_multiplier * castorinaPn(z)
         elif self.HI_stoch_model == "obuljen_TNG":
             result = self.HI_stoch_multiplier * self.HI_stoch_function(z, k)
-        elif self.HI_stoch_model == "obuljen_TNG_white":
+        elif self.HI_stoch_model in [
+            "obuljen_TNG_sampling_white", "obuljen_TNG_Perr_white"
+        ]:
             result = self.HI_stoch_multiplier * self.HI_stoch_function(z)
         else:
             raise NotImplementedError("Unrecognized HI stochastic noise model!")
@@ -232,7 +246,7 @@ class experiment(object):
         """
         if self.HI_sampling_model == "castorina":
             return castorinaPn(z)
-        elif self.HI_sampling_model == "obuljen_TNG_white":
+        elif self.HI_sampling_model == "obuljen_TNG_sampling_white":
             return self.HI_sampling_function(z)
         else:
             raise NotImplementedError("Unrecognized HI sampling noise model!")

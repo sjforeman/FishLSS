@@ -31,9 +31,14 @@ def get_TNG_Pstoch_models(dir_):
     k = Pstoch_data[:, 0]
     Pstoch_values = Pstoch_data[:, 1:]
 
+    Perr_data = np.genfromtxt(os.path.join(dir_, "obuljen/TNG_z_Perr.txt"))
+    z = Perr_data[:, 0]
+    Perr_values_white = Perr_data[:, 1]
+
     return {
         "z": z,
         "k": k,
         "Pstoch_values": Pstoch_values,
         "Pstoch_values_white": Pstoch_values_white,
+        "Perr_values_white": Perr_values_white,
     }
