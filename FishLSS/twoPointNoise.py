@@ -38,9 +38,9 @@ def compute_covariance_matrix(fishcast, zbin_index, nratio=1):
 
     # Get fiducial power spectrum (including noise)
     if fishcast.recon:
-        P_fid = fishcast.P_recon_fid[zbin_index]
+        P_fid = fishcast.P_recon_fid_for_cov[zbin_index]
     else:
-        P_fid = fishcast.P_fid[zbin_index]
+        P_fid = fishcast.P_fid_for_cov[zbin_index]
 
     if fishcast.experiment.sigma_z > 1e-10:
         # The number density (including 21cm noise) is effectively reduced if there are
@@ -135,12 +135,12 @@ def covariance_Cls(
     else:
         C = np.zeros((2 * n + 1, 2 * n + 1, len(l)))
     #
-    Ckk = fishcast.Ckk_fid
+    Ckk = fishcast.Ckk_fid_for_cov
     # kk, kk
     C[0, 0] = 2 * (Ckk + Nkk) ** 2 / (2 * l + 1) / fsky_CMB
     if not only_kk:
         for i in range(n):
-            Ckgi = fishcast.Ckg_fid[i]
+            Ckgi = fishcast.Ckg_fid_for_cov[i]
             # kk, kg
             C[i + 1, 0] = (
                 2 * (Ckk + Nkk) * Ckgi / (2 * l + 1) * constraint[i] / fsky_CMB
@@ -158,9 +158,9 @@ def covariance_Cls(
             )
             C[0, i + 1 + n] = C[i + 1 + n, 0]
             for j in range(n):
-                Ckgj = fishcast.Ckg_fid[j]
-                Cgigi = fishcast.Cgg_fid[i]
-                Cgjgj = fishcast.Cgg_fid[j]
+                Ckgj = fishcast.Ckg_fid_for_cov[j]
+                Cgigi = fishcast.Cgg_fid_for_cov[i]
+                Cgjgj = fishcast.Cgg_fid_for_cov[j]
                 # kgi, kgj
                 C[i + 1, j + 1] = Ckgi * Ckgj * constraint[i] * constraint[j]
                 if i == j:

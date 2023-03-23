@@ -380,7 +380,7 @@ def compute_tracer_power_spectrum(
     bL2=None,
     bLs=None,
     one_loop=True,
-    subtract_quadratic_lowk_constants=False,
+    remove_lowk_delta2=False,
 ):
     """
     Computes the nonlinear redshift-space power spectrum P(k,mu) [Mpc/h]^3
@@ -399,7 +399,7 @@ def compute_tracer_power_spectrum(
             b2=b2,
             bs=bs,
             N=N,
-            subtract_quadratic_lowk_constants=subtract_quadratic_lowk_constants,
+            remove_lowk_delta2=remove_lowk_delta2,
         )
 
     if b is None:
@@ -483,7 +483,7 @@ def compute_tracer_power_spectrum(
 
     # If desired, subtract low-k limits of b2^2 (index 5), b2*bs (index 8), and
     # bs^2 (index 9) terms
-    if subtract_quadratic_lowk_constants:
+    if remove_lowk_delta2:
         for op_i in [5, 8, 9]:
             lpt.p0ktable[:, op_i] -= lpt.p0ktable[0, op_i]
 
@@ -518,7 +518,7 @@ def compute_real_space_cross_power(
     alpha0=-1,
     alphax=0,
     N=None,
-    subtract_quadratic_lowk_constants=False,
+    remove_lowk_delta2=False,
 ):
     """
     Wrapper function for CLEFT. Returns P_XY where X,Y = k or g
@@ -558,7 +558,7 @@ def compute_real_space_cross_power(
 
         # If desired, subtract low-k limits of b2^2 (index 6), b2*bs (index 9), and
         # bs^2 (index 10) terms
-        if subtract_quadratic_lowk_constants:
+        if remove_lowk_delta2:
             for op_i in [6, 9, 10]:
                 cleft.pktable[:, op_i] -= cleft.pktable[0, op_i]
 
@@ -572,7 +572,7 @@ def compute_real_space_cross_power(
 
     # If desired, subtract low-k limits of b2^2 (index 6), b2*bs (index 9), and
     # bs^2 (index 10) terms
-    if subtract_quadratic_lowk_constants:
+    if remove_lowk_delta2:
         for op_i in [6, 9, 10]:
             cleft.pktable[:, op_i] -= cleft.pktable[0, op_i]
 
@@ -626,7 +626,7 @@ def compute_lensing_Cell(
     Nzsteps=100,
     Nzeff="auto",
     maxDz=0.2,
-    subtract_quadratic_lowk_constants=False,
+    remove_lowk_delta2=False,
 ):
     """
     Calculates C^XY_l using the Limber approximation where X,Y = 'k' or 'g'.
@@ -783,7 +783,7 @@ def compute_lensing_Cell(
                 alpha0=alpha0z(zz),
                 alphax=alphax,
                 N=Nz(zz),
-                subtract_quadratic_lowk_constants=subtract_quadratic_lowk_constants,
+                remove_lowk_delta2=remove_lowk_delta2,
             )
             for zz in zeff
         ]
@@ -813,7 +813,7 @@ def compute_recon_power_spectrum(
     b2=None,
     bs=None,
     N=None,
-    subtract_quadratic_lowk_constants=False,
+    remove_lowk_delta2=False,
 ):
     """
     Returns the reconstructed power spectrum, following Stephen's paper.
@@ -847,7 +847,7 @@ def compute_recon_power_spectrum(
     )
     # If desired, subtract low-k limits of b2^2 (index 5), b2*bs (index 8), and
     # bs^2 (index 9) terms
-    if subtract_quadratic_lowk_constants:
+    if remove_lowk_delta2:
         for op_i in [5, 8, 9]:
             p0ktable[:, op_i] -= p0ktable[0, op_i]
 

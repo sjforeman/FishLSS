@@ -45,7 +45,8 @@ class fisherForecast(object):
         output_root_directory="output",
         overwrite=False,
         verbose=False,
-        subtract_quadratic_lowk_constants=False,
+        remove_lowk_delta2_powspec=False,
+        remove_lowk_delta2_cov=False,
     ):
 
         self.kmin = kmin
@@ -84,7 +85,8 @@ class fisherForecast(object):
         self.Vsurvey = None  # comoving volume [Mpc/h]^3 in each redshift bin
         self.params = None
 
-        self.subtract_quadratic_lowk_constants = subtract_quadratic_lowk_constants
+        self.remove_lowk_delta2_powspec = remove_lowk_delta2_powspec
+        self.remove_lowk_delta2_cov = remove_lowk_delta2_cov
 
         self.out_root_dir = output_root_directory
         self.out_dir = self.out_root_dir + "/" + self.name + "/"
@@ -194,6 +196,7 @@ class fisherForecast(object):
     def compute_fiducial_Pk(self, overwrite=False):
 
         self.P_fid = np.zeros((self.experiment.nbins, self.Nk * self.Nmu))
+        self.P_fid_for_cov = np.zeros((self.experiment.nbins, self.Nk * self.Nmu))
 
         # Compute fiducial power spectra in each redshift bin
         for i in range(self.experiment.nbins):
@@ -202,15 +205,31 @@ class fisherForecast(object):
             zmax = self.experiment.zedges[i + 1]
             # P(k)
             fname = self.out_dir + "/derivatives/pfid_" + str(int(100 * z)) + ".txt"
+            fname_cov = (
+                self.out_dir + "/derivatives/pfid_for_cov_" + str(int(100 * z)) + ".txt"
+            )
             if not exists(fname) or overwrite:
                 self.P_fid[i] = compute_tracer_power_spectrum(
                     self,
                     z,
-                    subtract_quadratic_lowk_constants=self.subtract_quadratic_lowk_constants,
+                    remove_lowk_delta2=self.remove_lowk_delta2_powspec,
                 )
                 np.savetxt(fname, self.P_fid[i])
             else:
                 self.P_fid[i] = np.genfromtxt(fname)
+
+            if self.remove_lowk_delta2_powspec == self.remove_lowk_delta2_cov:
+                self.P_fid_for_cov[i] = self.P_fid[i]
+            else:
+                if not exists(fname_cov) or overwrite:
+                    self.P_fid_for_cov[i] = compute_tracer_power_spectrum(
+                        self,
+                        z,
+                        remove_lowk_delta2=self.remove_lowk_delta2_cov,
+                    )
+                    np.savetxt(fname_cov, self.P_fid_for_cov[i])
+                else:
+                    self.P_fid_for_cov[i] = np.genfromtxt(fname_cov)
 
         # setup the k_par cut
         self.kpar_cut = np.ones((self.experiment.nbins, self.Nk * self.Nmu))
@@ -224,6 +243,9 @@ class fisherForecast(object):
         self.Ckg_fid = np.zeros((self.experiment.nbins, len(self.ell)))
         self.Cgg_fid = np.zeros((self.experiment.nbins, len(self.ell)))
 
+        self.Ckg_fid_for_cov = np.zeros((self.experiment.nbins, len(self.ell)))
+        self.Cgg_fid_for_cov = np.zeros((self.experiment.nbins, len(self.ell)))
+
         # Ckk
         fname = self.out_dir + "/derivatives_Cl/Ckk_fid.txt"
         if not exists(fname) or overwrite:
@@ -231,11 +253,13 @@ class fisherForecast(object):
                 self,
                 "k",
                 "k",
-                subtract_quadratic_lowk_constants=self.subtract_quadratic_lowk_constants,
+                remove_lowk_delta2=self.remove_lowk_delta2_powspec,
             )
             np.savetxt(fname, self.Ckk_fid)
         else:
             self.Ckk_fid = np.genfromtxt(fname)
+
+        self.Ckk_fid_for_cov = self.Ckk_fid
 
         # Compute fiducial power spectra in each redshift bin
         for i in range(self.experiment.nbins):
@@ -259,7 +283,7 @@ class fisherForecast(object):
                     "g",
                     zmin,
                     zmax,
-                    subtract_quadratic_lowk_constants=self.subtract_quadratic_lowk_constants,
+                    remove_lowk_delta2=self.remove_lowk_delta2_powspec,
                 )
                 np.savetxt(fname, self.Ckg_fid[i])
             else:
@@ -281,15 +305,64 @@ class fisherForecast(object):
                     "g",
                     zmin,
                     zmax,
-                    subtract_quadratic_lowk_constants=self.subtract_quadratic_lowk_constants,
+                    remove_lowk_delta2=self.remove_lowk_delta2_powspec,
                 )
                 np.savetxt(fname, self.Cgg_fid[i])
             else:
                 self.Cgg_fid[i] = np.genfromtxt(fname)
 
+            if self.remove_lowk_delta2_powspec == self.remove_lowk_delta2_cov:
+                self.Ckg_fid_for_cov[i] = self.Ckg_fid[i]
+                self.Cgg_fid_for_cov[i] = self.Cgg_fid[i]
+            else:
+                # Ckg
+                fname_for_cov = (
+                    self.out_dir
+                    + "/derivatives_Cl/Ckg_fid_for_cov_"
+                    + str(int(100 * zmin))
+                    + "_"
+                    + str(int(100 * zmax))
+                    + ".txt"
+                )
+                if not exists(fname_for_cov) or overwrite:
+                    self.Ckg_fid_for_cov[i] = compute_lensing_Cell(
+                        self,
+                        "k",
+                        "g",
+                        zmin,
+                        zmax,
+                        remove_lowk_delta2=self.remove_lowk_delta2_cov,
+                    )
+                    np.savetxt(fname_for_cov, self.Ckg_fid_for_cov[i])
+                else:
+                    self.Ckg_fid_for_cov[i] = np.genfromtxt(fname_for_cov)
+
+                # Cgg
+                fname_for_cov = (
+                    self.out_dir
+                    + "/derivatives_Cl/Cgg_fid_for_cov_"
+                    + str(int(100 * zmin))
+                    + "_"
+                    + str(int(100 * zmax))
+                    + ".txt"
+                )
+                if not exists(fname_for_cov) or overwrite:
+                    self.Cgg_fid_for_cov[i] = compute_lensing_Cell(
+                        self,
+                        "g",
+                        "g",
+                        zmin,
+                        zmax,
+                        remove_lowk_delta2=self.remove_lowk_delta2_cov,
+                    )
+                    np.savetxt(fname_for_cov, self.Cgg_fid_for_cov[i])
+                else:
+                    self.Cgg_fid_for_cov[i] = np.genfromtxt(fname_for_cov)
+
     def compute_fiducial_Precon(self, overwrite=False):
 
         self.P_recon_fid = np.zeros((self.experiment.nbins, self.Nk * self.Nmu))
+        self.P_recon_fid_for_cov = np.zeros((self.experiment.nbins, self.Nk * self.Nmu))
 
         # Compute fiducial power spectra in each redshift bin
         for i in range(self.experiment.nbins):
@@ -301,17 +374,39 @@ class fisherForecast(object):
             fname = (
                 self.out_dir + "/derivatives_recon/pfid_" + str(int(100 * z)) + ".txt"
             )
+            fname_cov = (
+                self.out_dir
+                + "/derivatives_recon/pfid_for_cov_"
+                + str(int(100 * z))
+                + ".txt"
+            )
+
             if not exists(fname) or overwrite:
                 self.recon = True
                 self.P_recon_fid[i] = compute_tracer_power_spectrum(
                     self,
                     z,
-                    subtract_quadratic_lowk_constants=self.subtract_quadratic_lowk_constants,
+                    remove_lowk_delta2=self.remove_lowk_delta2_powspec,
                 )
                 self.recon = False
                 np.savetxt(fname, self.P_recon_fid[i])
             else:
                 self.P_recon_fid[i] = np.genfromtxt(fname)
+
+            if self.remove_lowk_delta2_powspec == self.remove_lowk_delta2_cov:
+                self.P_recon_fid_for_cov[i] = self.P_recon_fid[i]
+            else:
+                if not exists(fname_cov) or overwrite:
+                    self.recon = True
+                    self.P_recon_fid_for_cov[i] = compute_tracer_power_spectrum(
+                        self,
+                        z,
+                        remove_lowk_delta2=self.remove_lowk_delta2_cov,
+                    )
+                    self.recon = False
+                    np.savetxt(fname_cov, self.P_recon_fid_for_cov[i])
+                else:
+                    self.P_recon_fid_for_cov[i] = np.genfromtxt(fname_cov)
 
     def create_json_summary(self):
         #
@@ -358,7 +453,8 @@ class fisherForecast(object):
             "T_ampl": self.experiment.T_ampl,
             "knl_z0": self.experiment.knl_z0,
             "dknl_dz": self.experiment.dknl_dz,
-            "subtract_quadratic_lowk_constants": self.subtract_quadratic_lowk_constants,
+            "remove_lowk_delta2_powspec": self.remove_lowk_delta2_powspec,
+            "remove_lowk_delta2_cov": self.remove_lowk_delta2_cov,
         }
 
         with open(self.out_dir + "summary.json", "w") as write_file:
@@ -385,7 +481,7 @@ class fisherForecast(object):
             Ps = compute_tracer_power_spectrum(
                 self,
                 z,
-                subtract_quadratic_lowk_constants=self.subtract_quadratic_lowk_constants,
+                remove_lowk_delta2=self.remove_lowk_delta2_powspec,
             )
         idx = np.where(sn2 / Ps >= self.N2cut)
         idx2 = np.where(Ps <= 0)
@@ -577,7 +673,7 @@ class fisherForecast(object):
                 "omega_lin": self.omega_lin,
                 "phi_lin": self.phi_lin,
                 "kIR": 0.2,
-                "subtract_quadratic_lowk_constants": self.subtract_quadratic_lowk_constants,
+                "remove_lowk_delta2": self.remove_lowk_delta2_powspec,
             }
 
         if self.experiment.HI:
@@ -1012,7 +1108,7 @@ class fisherForecast(object):
             "alpha0": alpha0_fid,
             "alphax": 0,
             "N": noise,
-            "subtract_quadratic_lowk_constants": self.subtract_quadratic_lowk_constants,
+            "remove_lowk_delta2": self.remove_lowk_delta2_powspec,
         }
 
         if param in kwargs:
@@ -2005,7 +2101,7 @@ class fisherForecast(object):
                 z,
                 alpha0=alpha0,
                 alpha2=alpha2,
-                subtract_quadratic_lowk_constants=self.subtract_quadratic_lowk_constants,
+                remove_lowk_delta2=self.remove_lowk_delta2_powspec,
             )
             if linear:
                 P_F = P_L + 1 / compute_n(self, z)
@@ -2052,7 +2148,7 @@ class fisherForecast(object):
             P_F = compute_tracer_power_spectrum(
                 self,
                 z,
-                subtract_quadratic_lowk_constants=self.subtract_quadratic_lowk_constants,
+                remove_lowk_delta2=self.remove_lowk_delta2_powspec,
             )
             integrand = (G(z) ** 2.0 * P_L / P_F) ** 2.0
             integrand *= self.k**2.0 * Deltak * self.dmu / (2.0 * np.pi**2.0)
