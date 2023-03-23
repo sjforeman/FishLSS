@@ -79,7 +79,7 @@ def HIb(z):
 
 
 def compute_b(fishcast, z):
-    """Compute linear bias at redshift z.
+    """Compute Eulerian linear bias at redshift z.
 
     Parameters
     ----------
@@ -91,7 +91,7 @@ def compute_b(fishcast, z):
     Returns
     -------
     b : float
-        Value of b.
+        Value of Eulerian b.
     """
     exp = fishcast.experiment
     custom = exp.b is not None
@@ -117,7 +117,7 @@ def compute_b(fishcast, z):
 
 
 def compute_b2(fishcast, z, b=None):
-    """Compute quadratic bias b2 at redshift z.
+    """Compute quadratic Eulerian bias b2 at redshift z, assuming Lagrangian b2 is 0.
 
     Parameters
     ----------
@@ -126,27 +126,27 @@ def compute_b2(fishcast, z, b=None):
     z : float
         Redshift.
     b : float, optional
-        Linear bias, used if b2 depends on it. If not specified, the results of
+        Linear Eulerian bias, used if b2 depends on it. If not specified, the results of
         `compute_b` are used. Default: None.
 
     Returns
     -------
     b2 : float
-        Value of b2.
+        Value of Eulerian b2.
     """
 
     if fishcast.experiment.b2 is not None:
         # If custom b2 is stored, use that
         return fishcast.experiment.b2(z)
     else:
-        # Otherwise, use Eulerian relation between b2 and b
+        # Otherwise, compute Eulerian b2, assuming that Lagrangian b2 is 0
         if b is None:
             b = compute_b(fishcast, z)
         return 8 * (b - 1) / 21
 
 
 def compute_bs(fishcast, z, b=None):
-    """Compute tidal bias bs at redshift z.
+    """Compute Eulerian tidal bias bs at redshift z, assuming Lagrangian bs is 0.
 
     Parameters
     ----------
@@ -155,20 +155,20 @@ def compute_bs(fishcast, z, b=None):
     z : float
         Redshift.
     b : float, optional
-        Linear bias, used if bs depends on it. If not specified, the results of
+        Linear Eulerian bias, used if bs depends on it. If not specified, the results of
         `compute_b` are used. Default: None.
 
     Returns
     -------
     bs : float
-        Value of bs.
+        Value of Eulerian bs.
     """
 
     if fishcast.experiment.bs is not None:
         # If custom bs is stored, use that
         return fishcast.experiment.bs(z)
     else:
-        # Otherwise, use Eulerian relation between bs and b
+        # Otherwise, compute Eulerian bs, assuming that Lagrangian bs is 0
         if b is None:
             b = compute_b(fishcast, z)
         return -2 * (b - 1) / 7
