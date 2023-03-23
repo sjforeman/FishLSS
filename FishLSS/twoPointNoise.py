@@ -487,12 +487,7 @@ def get_Tb(fishcast, z):
     return result
 
 
-def HI_therm(
-    fishcast,
-    z,
-    old=True,
-    sailer_nside=False,
-):
+def HI_therm(fishcast, z, old=True, sailer_nside=False, use_minbaseline=True):
     """
     Adapted from https://github.com/slosar/PUMANoise.
     Thermal noise power in Mpc^3/h^3. Thermal noise is
@@ -533,16 +528,20 @@ def HI_therm(
 
     def Nu(k, mu):
         if old:
-            return nofl(l(k, mu), hexpack=exp.hex_pack, Nside=Nside, D=D) * lam**2
-        #
-        ll, pi2lnb = np.genfromtxt("input/baseline_bs_44_D_14.txt").T
-        nofl_new = interp1d(
-            ll, pi2lnb / 2 / np.pi / ll, bounds_error=False, fill_value=0
-        )
-        result = nofl_new(l(k, mu)) * lam**2
+            result = nofl(l(k, mu), hexpack=exp.hex_pack, Nside=Nside, D=D) * lam**2
+        else:
+            ll, pi2lnb = np.genfromtxt("input/baseline_bs_44_D_14.txt").T
+            nofl_new = interp1d(
+                ll, pi2lnb / 2 / np.pi / ll, bounds_error=False, fill_value=0
+            )
+            result = nofl_new(l(k, mu)) * lam**2
         result = np.maximum(result, 1e-20)
-        I = np.where(l(k, mu) < D)
-        result[I] = 1e-20
+
+        # Set noise to large value at k_perp values that are too low to be probed
+        # by the shortest baseline (assumed to be equal to the dish diameter)
+        if use_minbaseline:
+            I = np.where(l(k, mu) < D)
+            result[I] = 1e-20
         return result
 
     # temperatures
