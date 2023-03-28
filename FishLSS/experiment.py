@@ -52,6 +52,7 @@ class experiment(object):
         HI_sampling_model="castorina",
         knl_z0=None,
         dknl_dz=None,
+        dknl_dDinv=None,
     ):
 
         # Redshift parameters
@@ -106,14 +107,14 @@ class experiment(object):
         self.alpha0 = alpha0
 
         # Assumption for k_nl(z) (function itself is defined in fisherForecast).
+        # If any of the 3 parameters is specified, we use
+        #  k_nl(z) = knl_z0 + dknl_dz * z + dknl_dDinv / D(z).
         # In default cosmology, inverse of rms Zeldovich displacement is roughly
         # described by knl_z0 = 0.16 h/Mpc, dknl_dz = 0.13 h/Mpc
-        if (knl_z0 is None and dknl_dz is not None) or (
-            knl_z0 is not None and dknl_dz is None
-        ):
-            raise InputError("Must specify both knl_z0 and dknl_dz if one is specified")
-        self.knl_z0 = knl_z0
-        self.dknl_dz = dknl_dz
+        if knl_z0 is None or dknl_dz is not None or dknl_dDinv is not None:
+            self.knl_z0 = 0 if knl_z0 is None else knl_z0
+            self.dknl_dz = 0 if dknl_dz is None else dknl_dz
+            self.dknl_dDinv = 0 if dknl_dDinv is None else dknl_dDinv
 
         # Flags for specific surveys
         self.LBG = LBG
@@ -128,7 +129,9 @@ class experiment(object):
         self.HI_stoch_model = HI_stoch_model
 
         if HI_stoch_model in [
-            "obuljen_TNG", "obuljen_TNG_sampling_white", "obuljen_TNG_Perr_white"
+            "obuljen_TNG",
+            "obuljen_TNG_sampling_white",
+            "obuljen_TNG_Perr_white",
         ]:
             # If using Obuljen models, read simulation measurements from disk, and
             # define interpolating functions
@@ -221,7 +224,8 @@ class experiment(object):
         elif self.HI_stoch_model == "obuljen_TNG":
             result = self.HI_stoch_multiplier * self.HI_stoch_function(z, k)
         elif self.HI_stoch_model in [
-            "obuljen_TNG_sampling_white", "obuljen_TNG_Perr_white"
+            "obuljen_TNG_sampling_white",
+            "obuljen_TNG_Perr_white",
         ]:
             result = self.HI_stoch_multiplier * self.HI_stoch_function(z)
         else:

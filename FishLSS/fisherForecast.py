@@ -434,6 +434,7 @@ class fisherForecast(object):
             "bs": bs_list,
             "custom_b2": self.experiment.b2 is not None,
             "custom_bs": self.experiment.bs is not None,
+            "sigv": self.experiment.sigv,
             "fsky": self.experiment.fsky,
             "CLASS default parameters": self.params_fid,
             "HI": self.experiment.HI,
@@ -453,6 +454,7 @@ class fisherForecast(object):
             "T_ampl": self.experiment.T_ampl,
             "knl_z0": self.experiment.knl_z0,
             "dknl_dz": self.experiment.dknl_dz,
+            "dknl_dDinv": self.experiment.dknl_dDinv,
             "remove_lowk_delta2_powspec": self.remove_lowk_delta2_powspec,
             "remove_lowk_delta2_cov": self.remove_lowk_delta2_cov,
         }
@@ -1386,7 +1388,10 @@ class fisherForecast(object):
     def knl_z(self, z):
         """Return the nonlinear scale (in h/Mpc) as a function of redshift.
 
-        Relies on `knl_z0` and `dknl_dz` being set internally beforehand.
+        Default (if `knl_z0` is not set in self.experiment) is inverse of rms of
+        Zeldovich displacements. Otherwise, we use
+            k_NL(z) = knl_z0 + dknl_dz * z + dkno_dDinv / D(z) ,
+        where D(z) is the linear growth factor.
 
         Parameters
         ----------
@@ -1401,10 +1406,16 @@ class fisherForecast(object):
         if self.experiment.knl_z0 is None:
             # Default: inverse of rms Zeldovich displacement.
             # In default cosmology, inverse of rms Zeldovich displacement is roughly
-            # described by knl_z0 = 0.16 h/Mpc, dknl_dz = 0.13 h/Mpc
+            # described by knl_z0 = 0.16 h/Mpc, dknl_dz = 0.13 h/Mpc, or better by
+            # knl_z0=0, dknl_dz=0, dknl_dDinv = 0.17 h/Mpc.
             return 1 / np.sqrt(self.Sigma2(z))
         else:
-            return self.experiment.knl_z0 + z * self.experiment.dknl_dz
+            return (
+                self.experiment.knl_z0
+                + self.experiment.dknl_dz * z
+                + self.experiment.dknl_dDinv
+                / self.cosmo.scale_independent_growth_factor(z)
+            )
 
     def kmax_constraint(self, z, kmax_knl=1.0):
         return self.k < kmax_knl * self.knl_z(z)
