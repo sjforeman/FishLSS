@@ -1430,7 +1430,11 @@ class fisherForecast(object):
         k_nl : float
             k_nonlinear, in h/Mpc.
         """
-        if self.experiment.knl_z0 is None:
+        if (
+            self.experiment.knl_z0 == 0
+            and self.experiment.dknl_dz == 0
+            and self.experiment.dknl_dDinv == 0
+        ):
             # Default: inverse of rms Zeldovich displacement.
             # In default cosmology, inverse of rms Zeldovich displacement is roughly
             # described by knl_z0 = 0.16 h/Mpc, dknl_dz = 0.13 h/Mpc, or better by
