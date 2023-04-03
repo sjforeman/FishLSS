@@ -102,9 +102,10 @@ class fisherForecast(object):
                 on + "/derivatives_recon/",
             ]
         )
-        for directory in directories:
-            if not os.path.exists(directory):
-                os.mkdir(directory)
+        if mpiutil.rank == 0:
+            for directory in directories:
+                if not os.path.exists(directory):
+                    os.mkdir(directory)
 
         if verbose:
             print("Setting parameters...")
@@ -115,7 +116,8 @@ class fisherForecast(object):
                 experiment, cosmo, cosmo_fid
             )
 
-        self.create_json_summary()
+        if mpiutil.rank == 0:
+            self.create_json_summary()
 
         if setup or overwrite:
             if verbose:
@@ -198,8 +200,9 @@ class fisherForecast(object):
         self.P_fid = np.zeros((self.experiment.nbins, self.Nk * self.Nmu))
         self.P_fid_for_cov = np.zeros((self.experiment.nbins, self.Nk * self.Nmu))
 
-        # Compute fiducial power spectra in each redshift bin
-        for i in range(self.experiment.nbins):
+        # Compute fiducial power spectra in each redshift bin, with different redshifts
+        # on different MPI ranks if using MPI
+        for i in mpiutil.mpirange(self.experiment.nbins):
             z = self.experiment.zcenters[i]
             zmin = self.experiment.zedges[i]
             zmax = self.experiment.zedges[i + 1]
@@ -231,6 +234,11 @@ class fisherForecast(object):
                 else:
                     self.P_fid_for_cov[i] = np.genfromtxt(fname_cov)
 
+        # If using MPI, gather full power spectra on each rank
+        if mpiutil.size > 1:
+            self.P_fid = mpiutil.allreduce(self.P_fid)
+            self.P_fid_for_cov = mpiutil.allreduce(self.P_fid_for_cov)
+
         # setup the k_par cut
         self.kpar_cut = np.ones((self.experiment.nbins, self.Nk * self.Nmu))
         for i in range(self.experiment.nbins):
@@ -246,23 +254,29 @@ class fisherForecast(object):
         self.Ckg_fid_for_cov = np.zeros((self.experiment.nbins, len(self.ell)))
         self.Cgg_fid_for_cov = np.zeros((self.experiment.nbins, len(self.ell)))
 
-        # Ckk
-        fname = self.out_dir + "/derivatives_Cl/Ckk_fid.txt"
-        if not exists(fname) or overwrite:
-            self.Ckk_fid = compute_lensing_Cell(
-                self,
-                "k",
-                "k",
-                remove_lowk_delta2=self.remove_lowk_delta2_powspec,
-            )
-            np.savetxt(fname, self.Ckk_fid)
-        else:
-            self.Ckk_fid = np.genfromtxt(fname)
+        # Ckk (only compute on rank 0, if using MPI)
+        if mpiutil.rank == 0:
+            fname = self.out_dir + "/derivatives_Cl/Ckk_fid.txt"
+            if not exists(fname) or overwrite:
+                self.Ckk_fid = compute_lensing_Cell(
+                    self,
+                    "k",
+                    "k",
+                    remove_lowk_delta2=self.remove_lowk_delta2_powspec,
+                )
+                np.savetxt(fname, self.Ckk_fid)
+            else:
+                self.Ckk_fid = np.genfromtxt(fname)
+
+        # If using MPI, broadcast Ckk to all ranks
+        if mpiutil.size > 1:
+            self.Ckk_fid = mpiutil.bcast(self.Ckk_fid)
 
         self.Ckk_fid_for_cov = self.Ckk_fid
 
-        # Compute fiducial power spectra in each redshift bin
-        for i in range(self.experiment.nbins):
+        # Compute fiducial power spectra in each redshift bin, with different redshifts
+        # on different MPI ranks if using MPI
+        for i in mpiutil.mpirange(self.experiment.nbins):
             z = self.experiment.zcenters[i]
             zmin = self.experiment.zedges[i]
             zmax = self.experiment.zedges[i + 1]
@@ -359,13 +373,21 @@ class fisherForecast(object):
                 else:
                     self.Cgg_fid_for_cov[i] = np.genfromtxt(fname_for_cov)
 
+        # If using MPI, gather full power spectra on each rank
+        if mpiutil.size > 1:
+            self.Ckg_fid = mpiutil.allreduce(self.Ckg_fid)
+            self.Ckg_fid_for_cov = mpiutil.allreduce(self.Ckg_fid_for_cov)
+            self.Cgg_fid = mpiutil.allreduce(self.Cgg_fid)
+            self.Cgg_fid_for_cov = mpiutil.allreduce(self.Cgg_fid_for_cov)
+
     def compute_fiducial_Precon(self, overwrite=False):
 
         self.P_recon_fid = np.zeros((self.experiment.nbins, self.Nk * self.Nmu))
         self.P_recon_fid_for_cov = np.zeros((self.experiment.nbins, self.Nk * self.Nmu))
 
-        # Compute fiducial power spectra in each redshift bin
-        for i in range(self.experiment.nbins):
+        # Compute fiducial power spectra in each redshift bin, with different redshifts
+        # on different MPI ranks if using MPI
+        for i in mpiutil.mpirange(self.experiment.nbins):
             z = self.experiment.zcenters[i]
             zmin = self.experiment.zedges[i]
             zmax = self.experiment.zedges[i + 1]
@@ -407,6 +429,11 @@ class fisherForecast(object):
                     np.savetxt(fname_cov, self.P_recon_fid_for_cov[i])
                 else:
                     self.P_recon_fid_for_cov[i] = np.genfromtxt(fname_cov)
+
+        # If using MPI, gather full power spectra on each rank
+        if mpiutil.size > 1:
+            self.P_recon_fid = mpiutil.allreduce(self.P_recon_fid)
+            self.P_recon_fid_for_cov = mpiutil.allreduce(self.P_recon_fid_for_cov)
 
     def create_json_summary(self):
         #
