@@ -533,7 +533,14 @@ class fisherForecast(object):
         idx2 = np.where(Ps <= 0)
         kpar_cut = np.ones(self.Nk * self.Nmu)
         kpar_cut[idx] = 0
-        kpar_cut[idx2] = 0
+
+        # If not removing low-k limits of quadratic terms, we also cut wavenumbers where
+        # the fiducial power spectrum is negative. The low-k subtraction makes it less
+        # clear that this is a good cut, so we don't use this cut if implementing the
+        # subtraction.
+        if not self.remove_lowk_delta2_powspec:
+            kpar_cut[idx2] = 0
+
         return kpar_cut
 
     def comov_vol(self, zmin, zmax):
