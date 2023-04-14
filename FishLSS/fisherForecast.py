@@ -262,7 +262,7 @@ class fisherForecast(object):
         self.Cgg_fid_for_cov = np.zeros((self.experiment.nbins, len(self.ell)))
 
         # Ckk (only compute on rank 0, if using MPI)
-        if mpiutil.rank == 0:
+        if not use_mpi or mpiutil.rank == 0:
             fname = self.out_dir + "/derivatives_Cl/Ckk_fid.txt"
             if not exists(fname) or overwrite:
                 self.Ckk_fid = compute_lensing_Cell(
