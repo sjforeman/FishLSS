@@ -524,20 +524,22 @@ def compute_real_space_cross_power(
     Wrapper function for CLEFT. Returns P_XY where X,Y = k or g
     as a function of k.
     """
-    if b is None:
-        b = compute_b(fishcast, z)
-    if b2 is None:
-        b2 = compute_b2(fishcast, z, b=b)
-    if bs is None:
-        bs = compute_b2(fishcast, z, b=b)
-    if alpha0 == -1:
-        if z < 6:
-            alpha0 = 1.22 + 0.24 * b**2 * (z - 5.96)
-        else:
-            alpha0 = 0.0
-    if N is None:
-        N = 1 / compute_n(fishcast, z)
-    N = np.array(N)
+
+    if not (X == Y and X == "k"):
+        if b is None:
+            b = compute_b(fishcast, z)
+        if b2 is None:
+            b2 = compute_b2(fishcast, z, b=b)
+        if bs is None:
+            bs = compute_b2(fishcast, z, b=b)
+        if alpha0 == -1:
+            if z < 6:
+                alpha0 = 1.22 + 0.24 * b**2 * (z - 5.96)
+            else:
+                alpha0 = 0.0
+        if N is None:
+            N = 1 / compute_n(fishcast, z)
+        N = np.array(N)
 
     bk = (1 + gamma) / 2 - 1
     h = fishcast.params["h"]
