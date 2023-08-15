@@ -629,6 +629,7 @@ def compute_lensing_Cell(
     Nzeff="auto",
     maxDz=0.2,
     remove_lowk_delta2=False,
+    always_use_kappa_kernel=False,
 ):
     """
     Calculates C^XY_l using the Limber approximation where X,Y = 'k' or 'g'.
@@ -730,7 +731,7 @@ def compute_lensing_Cell(
     Wg = np.array([nonnorm_Wg(z) for z in zs])
     Wg /= simps(Wg, x=chis)
     Wk = np.array([W_k(z) for z in zs])
-    if X == Y and X == "k":
+    if (X == Y and X == "k") or always_use_kappa_kernel:
         kern = Wk**2 / chis**2
     elif X == Y and X == "g":
         kern = Wg**2 / chis**2
