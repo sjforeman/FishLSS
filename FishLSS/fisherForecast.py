@@ -470,6 +470,7 @@ class fisherForecast(object):
             "Edges of redshift bins": ze,
             "Centers of redshift bins": list(zs),
             "k": list(self.k),
+            "ell": self.ell.tolist(),
             "Linear Eulerian bias in each bin": b_list,
             "Number density in each bin": ns,
             "custom_b": self.experiment.b is not None,
