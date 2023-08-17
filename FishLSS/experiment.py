@@ -2,7 +2,6 @@ import types
 
 from .headers import *
 from .castorina import castorinaPn
-import FishLSS.obuljen as obuljen
 from .util import Interpolator2d
 
 
@@ -47,14 +46,13 @@ class experiment(object):
         omt_coupling=0.9,
         T_ground=300.0,
         T_ampl=50.0,
-        HI_stoch_model="castorina",
+        HI_stoch_file=None,
         HI_stoch_multiplier=1.0,
-        HI_sampling_model="castorina",
+        HI_sampling_file=None,
         knl_z0=None,
         dknl_dz=None,
         dknl_dDinv=None,
     ):
-
         # Redshift parameters
         self.zmin = zmin
         self.zmax = zmax
@@ -125,63 +123,50 @@ class experiment(object):
         self.MSE = MSE
         self.Roman = Roman
 
-        # HI stochasticity model
-        self.HI_stoch_model = HI_stoch_model
-
-        if HI_stoch_model in [
-            "obuljen_TNG",
-            "obuljen_TNG_sampling_white",
-            "obuljen_TNG_Perr_white",
-        ]:
-            # If using Obuljen models, read simulation measurements from disk, and
-            # define interpolating functions
-            obuljen_data = obuljen.get_TNG_Pstoch_models(
-                os.path.join(os.path.dirname(obuljen.__file__), "../input")
-            )
-            if HI_stoch_model == "obuljen_TNG":
-                self.HI_stoch_interpolator = Interpolator2d(
-                    obuljen_data["z"],
-                    obuljen_data["k"],
-                    obuljen_data["Pstoch_values"],
-                    kx=1,
-                    ky=1,
-                )
-                # HI_stoch_function returns a 1d array, evaluated at the single input z
-                # and array of input k values
-                self.HI_stoch_function = self.HI_stoch_interpolator.evaluate
-            elif HI_stoch_model == "obuljen_TNG_sampling_white":
-                self.HI_stoch_function = interp1d(
-                    obuljen_data["z"],
-                    obuljen_data["Pstoch_values_white"],
-                    bounds_error=False,
-                    fill_value=(
-                        obuljen_data["Pstoch_values_white"][0],
-                        obuljen_data["Pstoch_values_white"][-1],
-                    ),
-                )
-            elif HI_stoch_model == "obuljen_TNG_Perr_white":
-                self.HI_stoch_function = interp1d(
-                    obuljen_data["z"],
-                    obuljen_data["Perr_values_white"],
-                    bounds_error=False,
-                    fill_value=(
-                        obuljen_data["Perr_values_white"][0],
-                        obuljen_data["Perr_values_white"][-1],
-                    ),
-                )
+        # If specified, read HI stochasticity model from file
+        self.HI_stoch_file = HI_stoch_file
+        self.HI_stoch_function = None
         self.HI_stoch_multiplier = HI_stoch_multiplier
+        if HI_stoch_file is not None:
+            # File is assumed to be 2-column list of [z, Pstoch(z)]
+            Pstoch_data = np.genfromtxt(HI_stoch_file)
+            self.HI_stoch_function = interp1d(
+                Pstoch_data[:, 0],
+                Pstoch_data[:, 1],
+                bounds_error=False,
+                fill_value=(
+                    Pstoch_data[0, 1],
+                    Pstoch_data[-1, 1],
+                ),
+            )
 
-        # HI sampling noise model
-        self.HI_sampling_model = HI_sampling_model
-        if HI_sampling_model == "obuljen_TNG_sampling_white":
-            # If using Obuljen TNG sampling noise model, read simulation measurements
-            # from disk and define interpolating function
-            obuljen_data = obuljen.get_TNG_Pstoch_models(
-                os.path.join(os.path.dirname(obuljen.__file__), "../input")
-            )
+        # If specified, read HI sampling noise model from file
+        self.HI_sampling_file = HI_sampling_file
+        self.HI_sampling_function = None
+        if HI_sampling_file is not None:
+            # File is assumed to be 2-column list of [z, Psampling(z)]
+            Psampling_data = np.genfromtxt(HI_sampling_file)
             self.HI_sampling_function = interp1d(
-                obuljen_data["z"], obuljen_data["Pstoch_values_white"]
+                Psampling_data[:, 0],
+                Psampling_data[:, 1],
+                bounds_error=False,
+                fill_value=(
+                    Psampling_data[0, 1],
+                    Psampling_data[-1, 1],
+                ),
             )
+
+        ### Not implemented: 2d stochasticity model
+        # self.HI_stoch_interpolator = Interpolator2d(
+        #     obuljen_data["z"],
+        #     obuljen_data["k"],
+        #     obuljen_data["Pstoch_values"],
+        #     kx=1,
+        #     ky=1,
+        # )
+        # # HI_stoch_function returns a 1d array, evaluated at the single input z
+        # # and array of input k values
+        # self.HI_stoch_function = self.HI_stoch_interpolator.evaluate
 
         # HI survey parameters
         self.Ndetectors = Ndetectors
@@ -213,23 +198,17 @@ class experiment(object):
         k : array_like, optional
             Wavenumber(s). Can either be float or array of values. Must be specified
             if stochastic noise model is k-dependent; ignored otherwise. Default: None.
+            Currently not implemented.
 
         Returns
         -------
         result : float or array_like
             Stochastic noise evaluated at z and k.
         """
-        if self.HI_stoch_model == "castorina":
+        if self.HI_stoch_function is None:
             result = self.HI_stoch_multiplier * castorinaPn(z)
-        elif self.HI_stoch_model == "obuljen_TNG":
-            result = self.HI_stoch_multiplier * self.HI_stoch_function(z, k)
-        elif self.HI_stoch_model in [
-            "obuljen_TNG_sampling_white",
-            "obuljen_TNG_Perr_white",
-        ]:
-            result = self.HI_stoch_multiplier * self.HI_stoch_function(z)
         else:
-            raise NotImplementedError("Unrecognized HI stochastic noise model!")
+            result = self.HI_stoch_multiplier * self.HI_stoch_function(z)
 
         return result
 
@@ -248,9 +227,7 @@ class experiment(object):
         result : float
             Sampling noise power spectrum at z.
         """
-        if self.HI_sampling_model == "castorina":
+        if self.HI_sampling_function is None:
             return castorinaPn(z)
-        elif self.HI_sampling_model == "obuljen_TNG_sampling_white":
-            return self.HI_sampling_function(z)
         else:
-            raise NotImplementedError("Unrecognized HI sampling noise model!")
+            return self.HI_sampling_function(z)

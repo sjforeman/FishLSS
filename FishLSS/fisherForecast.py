@@ -50,7 +50,6 @@ class fisherForecast(object):
         write_json_summary=True,
         use_mpi=True,
     ):
-
         self.kmin = kmin
         self.kmax = kmax
         self.Nmu = Nmu
@@ -198,7 +197,6 @@ class fisherForecast(object):
         self.rsd_fid = interp1d(redshifts, rsd_fid, kind="linear")
 
     def compute_fiducial_Pk(self, overwrite=False, use_mpi=True):
-
         self.P_fid = np.zeros((self.experiment.nbins, self.Nk * self.Nmu))
         self.P_fid_for_cov = np.zeros((self.experiment.nbins, self.Nk * self.Nmu))
 
@@ -253,7 +251,6 @@ class fisherForecast(object):
             self.kpar_cut[i] = self.compute_kpar_cut(z, i)
 
     def compute_fiducial_Cl(self, overwrite=False, use_mpi=True):
-
         self.Ckk_fid = np.zeros(len(self.ell))
         self.Ckg_fid = np.zeros((self.experiment.nbins, len(self.ell)))
         self.Cgg_fid = np.zeros((self.experiment.nbins, len(self.ell)))
@@ -393,7 +390,6 @@ class fisherForecast(object):
             self.Cgg_fid_for_cov = mpiutil.allreduce(self.Cgg_fid_for_cov)
 
     def compute_fiducial_Precon(self, overwrite=False, use_mpi=True):
-
         self.P_recon_fid = np.zeros((self.experiment.nbins, self.Nk * self.Nmu))
         self.P_recon_fid_for_cov = np.zeros((self.experiment.nbins, self.Nk * self.Nmu))
 
@@ -484,9 +480,9 @@ class fisherForecast(object):
             "CLASS default parameters": self.params_fid,
             "HI": self.experiment.HI,
             "pessimistic": self.experiment.pessimistic,
-            "HI_stoch_model": self.experiment.HI_stoch_model,
+            "HI_stoch_file": self.experiment.HI_stoch_file,
             "HI_stoch_multiplier": self.experiment.HI_stoch_multiplier,
-            "HI_sampling_model": self.experiment.HI_sampling_model,
+            "HI_sampling_file": self.experiment.HI_sampling_file,
             "Ndetectors": self.experiment.Ndetectors,
             "fill_factor": self.experiment.fill_factor,
             "t_int": self.experiment.tint,
@@ -1928,7 +1924,6 @@ class fisherForecast(object):
                     integrand = dPdvecp[i] * Cinv * dPdvecp[j] * constraints
                     integrand *= self.kpar_cut[zbin_index]  # N2 < 20 % of power
                     if simpson:
-
                         ##########################################################################################
                         # this is wrong, need to factor out dk dmu
 
