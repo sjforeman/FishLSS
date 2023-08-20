@@ -43,6 +43,9 @@ class fisherForecast(object):
         N2cut=0.2,
         setup=True,
         output_root_directory="output",
+        deriv_directory=None,
+        deriv_Cl_directory=None,
+        deriv_recon_directory=None,
         overwrite=False,
         verbose=False,
         remove_lowk_delta2_powspec=False,
@@ -89,24 +92,43 @@ class fisherForecast(object):
         self.remove_lowk_delta2_powspec = remove_lowk_delta2_powspec
         self.remove_lowk_delta2_cov = remove_lowk_delta2_cov
 
+        # Set directories for forecast output
         self.out_root_dir = output_root_directory
         self.out_dir = self.out_root_dir + "/" + self.name + "/"
+        self.fid_dir = self.out_dir + "/fid_pk/"
+        self.fid_Cl_dir = self.out_dir + "/fid_Cl/"
+        self.fid_recon_dir = self.out_dir + "/fid_pk_recon/"
+
+        if deriv_directory is None:
+            self.deriv_dir = self.out_dir + "/derivatives/"
+        else:
+            self.deriv_dir = deriv_directory
+        if deriv_Cl_directory is None:
+            self.deriv_Cl_dir = self.out_dir + "/derivatives_Cl/"
+        else:
+            self.deriv_Cl_dir = deriv_Cl_directory
+        if deriv_recon_directory is None:
+            self.deriv_recon_dir = self.out_dir + "/derivatives_recon/"
+        else:
+            self.deriv_recon_dir = deriv_recon_directory
 
         # make directories for storing derivatives and fiducial power spectra
-        o, on = self.out_root_dir, self.out_dir
         directories = np.array(
             [
-                o,
-                on,
-                on + "/derivatives/",
-                on + "/derivatives_Cl/",
-                on + "/derivatives_recon/",
+                self.out_root_dir,
+                self.out_dir,
+                self.fid_dir,
+                self.fid_Cl_dir,
+                self.fid_recon_dir,
+                self.deriv_dir,
+                self.deriv_Cl_dir,
+                self.deriv_recon_dir,
             ]
         )
         if mpiutil.rank == 0:
             for directory in directories:
                 if not os.path.exists(directory):
-                    os.mkdir(directory)
+                    os.makedirs(directory)
 
         if verbose:
             print("Setting parameters...")
@@ -212,10 +234,8 @@ class fisherForecast(object):
             zmin = self.experiment.zedges[i]
             zmax = self.experiment.zedges[i + 1]
             # P(k)
-            fname = self.out_dir + "/derivatives/pfid_" + str(int(100 * z)) + ".txt"
-            fname_cov = (
-                self.out_dir + "/derivatives/pfid_for_cov_" + str(int(100 * z)) + ".txt"
-            )
+            fname = self.fid_dir + "pfid_" + str(int(100 * z)) + ".txt"
+            fname_cov = self.fid_dir + "pfid_for_cov_" + str(int(100 * z)) + ".txt"
             if not exists(fname) or overwrite:
                 self.P_fid[i] = compute_tracer_power_spectrum(
                     self,
@@ -260,7 +280,7 @@ class fisherForecast(object):
 
         # Ckk (only compute on rank 0, if using MPI)
         if not use_mpi or mpiutil.rank == 0:
-            fname = self.out_dir + "/derivatives_Cl/Ckk_fid.txt"
+            fname = self.fid_Cl_dir + "Ckk_fid.txt"
             if not exists(fname) or overwrite:
                 self.Ckk_fid = compute_lensing_Cell(
                     self,
@@ -292,8 +312,8 @@ class fisherForecast(object):
 
             # Ckg
             fname = (
-                self.out_dir
-                + "/derivatives_Cl/Ckg_fid_"
+                self.fid_Cl_dir
+                + "Ckg_fid_"
                 + str(int(100 * zmin))
                 + "_"
                 + str(int(100 * zmax))
@@ -314,8 +334,8 @@ class fisherForecast(object):
 
             # Cgg
             fname = (
-                self.out_dir
-                + "/derivatives_Cl/Cgg_fid_"
+                self.fid_Cl_dir
+                + "Cgg_fid_"
                 + str(int(100 * zmin))
                 + "_"
                 + str(int(100 * zmax))
@@ -340,8 +360,8 @@ class fisherForecast(object):
             else:
                 # Ckg
                 fname_for_cov = (
-                    self.out_dir
-                    + "/derivatives_Cl/Ckg_fid_for_cov_"
+                    self.fid_Cl_dir
+                    + "Ckg_fid_for_cov_"
                     + str(int(100 * zmin))
                     + "_"
                     + str(int(100 * zmax))
@@ -362,8 +382,8 @@ class fisherForecast(object):
 
                 # Cgg
                 fname_for_cov = (
-                    self.out_dir
-                    + "/derivatives_Cl/Cgg_fid_for_cov_"
+                    self.fid_Cl_dir
+                    + "Cgg_fid_for_cov_"
                     + str(int(100 * zmin))
                     + "_"
                     + str(int(100 * zmax))
@@ -406,14 +426,9 @@ class fisherForecast(object):
             zmax = self.experiment.zedges[i + 1]
 
             # P_recon(k)
-            fname = (
-                self.out_dir + "/derivatives_recon/pfid_" + str(int(100 * z)) + ".txt"
-            )
+            fname = self.fid_recon_dir + "pfid_" + str(int(100 * z)) + ".txt"
             fname_cov = (
-                self.out_dir
-                + "/derivatives_recon/pfid_for_cov_"
-                + str(int(100 * z))
-                + ".txt"
+                self.fid_recon_dir + "pfid_for_cov_" + str(int(100 * z)) + ".txt"
             )
 
             if not exists(fname) or overwrite:
@@ -498,6 +513,12 @@ class fisherForecast(object):
             "dknl_dDinv": self.experiment.dknl_dDinv,
             "remove_lowk_delta2_powspec": self.remove_lowk_delta2_powspec,
             "remove_lowk_delta2_cov": self.remove_lowk_delta2_cov,
+            "fid_dir": self.fid_dir,
+            "fid_Cl_dir": self.fid_Cl_dir,
+            "fid_recon_dir": self.fid_recon_dir,
+            "deriv_dir": self.deriv_dir,
+            "deriv_Cl_dir": self.deriv_Cl_dir,
+            "deriv_recon_dir": self.deriv_recon_dir,
         }
 
         with open(self.out_dir + "summary.json", "w") as write_file:
@@ -1550,10 +1571,8 @@ class fisherForecast(object):
                     )
                 else:
                     filename = p + "_" + str(int(100 * z[i])) + ".txt"
-                folder = "/derivatives/"
-                if self.recon:
-                    folder = "/derivatives_recon/"
-                fname = self.out_dir + folder + filename
+                folder = self.deriv_dir if not self.recon else self.deriv_recon_dir
+                fname = folder + filename
                 if not exists(fname) or overwrite:
                     dPdp = self.compute_dPdp(param=p, z=z[i], five_point=five_point)
                     np.savetxt(fname, dPdp)
@@ -1600,10 +1619,8 @@ class fisherForecast(object):
                 )
             else:
                 filename = p + "_" + str(int(100 * z)) + ".txt"
-            folder = "/derivatives/"
-            if self.recon:
-                folder = "/derivatives_recon/"
-            fname = self.out_dir + folder + filename
+            folder = self.deriv_dir if not self.recon else self.deriv_recon_dir
+            fname = folder + filename
             if not exists(fname) or overwrite:
                 dPdp = self.compute_dPdp(param=p, z=z, five_point=five_point)
                 np.savetxt(fname, dPdp)
@@ -1665,7 +1682,7 @@ class fisherForecast(object):
             # We don't recompute the derivative if the file already exists
             if p != "gamma":
                 filename = "Ckk_" + p + ".txt"
-                fname = self.out_dir + "/derivatives_Cl/" + filename
+                fname = self.deriv_Cl_dir + filename
                 if not exists(fname) or overwrite:
                     dCdp = self.compute_dCdp(p, "k", "k", five_point=five_point)
                     np.savetxt(fname, dCdp)
@@ -1679,7 +1696,7 @@ class fisherForecast(object):
                     + str(int(100 * zedges[zi + 1]))
                     + ".txt"
                 )
-                fname = self.out_dir + "/derivatives_Cl/" + filename
+                fname = self.deriv_Cl_dir + filename
                 if not exists(fname) or overwrite:
                     dCdp = self.compute_dCdp(
                         p,
@@ -1702,7 +1719,7 @@ class fisherForecast(object):
                     + str(int(100 * zedges[zi + 1]))
                     + ".txt"
                 )
-                fname = self.out_dir + "/derivatives_Cl/" + filename
+                fname = self.deriv_Cl_dir + filename
                 if not exists(fname) or overwrite:
                     dCdp = self.compute_dCdp(
                         p,
@@ -1724,7 +1741,7 @@ class fisherForecast(object):
                     + str(int(100 * zedges[zi + 1]))
                     + ".txt"
                 )
-                fname = self.out_dir + "/derivatives_Cl/" + filename
+                fname = self.deriv_Cl_dir + filename
                 if not exists(fname) or overwrite:
                     dCdp = self.compute_dCdp(
                         p,
@@ -1738,9 +1755,9 @@ class fisherForecast(object):
 
     def check_derivatives(self):
         """
-        Plots all the derivatives in the {out_dir}/derivatives directory
+        Plots all the derivatives in the derivatives directory
         """
-        directory = self.out_dir + "/derivatives"
+        directory = self.deriv_dir
         for root, dirs, files in os.walk(directory, topdown=False):
             for file in files:
                 filename = os.path.join(directory, file)
@@ -1778,10 +1795,7 @@ class fisherForecast(object):
         if self.recon and polys:
             N += 15
         derivatives = np.empty((nbins, N, self.Nk * self.Nmu))
-        folder = "/derivatives/"
-        if self.recon:
-            folder = "/derivatives_recon/"
-        directory = self.out_dir + folder
+        directory = self.deriv_dir if not self.recon else self.deriv_recon_dir
 
         for zbin_index in range(nbins):
             z = self.experiment.zcenters[zbin_index]
@@ -1971,7 +1985,7 @@ class fisherForecast(object):
                     + str(int(100 * zs[m]))
                     + ".txt"
                 )
-                result[m] = np.genfromtxt(self.out_dir + "/derivatives_Cl/" + filename)
+                result[m] = np.genfromtxt(self.deriv_Cl_dir + filename)
                 filename = (
                     "Cgg_"
                     + param
@@ -1981,15 +1995,11 @@ class fisherForecast(object):
                     + str(int(100 * zs[m]))
                     + ".txt"
                 )
-                result[m + n] = np.genfromtxt(
-                    self.out_dir + "/derivatives_Cl/" + filename
-                )
+                result[m + n] = np.genfromtxt(self.deriv_Cl_dir + filename)
                 return result
 
         if not "gamma" in param:
-            result[0] = np.genfromtxt(
-                self.out_dir + "/derivatives_Cl/Ckk_" + param + ".txt"
-            )
+            result[0] = np.genfromtxt(self.deriv_Cl_dir + "Ckk_" + param + ".txt")
         else:
             idx = int(param[-1])
             filename = (
@@ -1999,7 +2009,7 @@ class fisherForecast(object):
                 + str(int(100 * zs[idx]))
                 + ".txt"
             )
-            result[0] = np.genfromtxt(self.out_dir + "/derivatives_Cl/" + filename)
+            result[0] = np.genfromtxt(self.deriv_Cl_dir + filename)
 
         if not only_kk:
             for i in range(1, n + 1):
@@ -2012,9 +2022,7 @@ class fisherForecast(object):
                         + str(int(100 * zs[idx]))
                         + ".txt"
                     )
-                    result[idx] = np.genfromtxt(
-                        self.out_dir + "/derivatives_Cl/" + filename
-                    )
+                    result[idx] = np.genfromtxt(self.deriv_Cl_dir + filename)
                     filename = (
                         "Cgg_gamma_"
                         + str(int(100 * zs[idx - 1]))
@@ -2022,9 +2030,7 @@ class fisherForecast(object):
                         + str(int(100 * zs[idx]))
                         + ".txt"
                     )
-                    result[idx + n] = np.genfromtxt(
-                        self.out_dir + "/derivatives_Cl/" + filename
-                    )
+                    result[idx + n] = np.genfromtxt(self.deriv_Cl_dir + filename)
                 else:
                     filename = (
                         "Ckg_"
@@ -2035,9 +2041,7 @@ class fisherForecast(object):
                         + str(int(100 * zs[i]))
                         + ".txt"
                     )
-                    result[i] = np.genfromtxt(
-                        self.out_dir + "/derivatives_Cl/" + filename
-                    )
+                    result[i] = np.genfromtxt(self.deriv_Cl_dir + filename)
                     filename = (
                         "Cgg_"
                         + param
@@ -2047,9 +2051,7 @@ class fisherForecast(object):
                         + str(int(100 * zs[i]))
                         + ".txt"
                     )
-                    result[i + n] = np.genfromtxt(
-                        self.out_dir + "/derivatives_Cl/" + filename
-                    )
+                    result[i + n] = np.genfromtxt(self.deriv_Cl_dir + filename)
         return result
 
     def gen_lensing_fisher(
