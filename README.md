@@ -1,3 +1,11 @@
+# HI fork of FishLSS
+
+This is a version of FishLSS that has been heavily modified to perform the 21cm intensity mapping forecasts contained in [https://arxiv.org/abs/YYYY.XXXX](https://arxiv.org/abs/YYYY.XXXXX). See below for the original readme.
+
+In addition to the requirements below, this version of FishLSS also requires the [caput](https://github.com/radiocosmology/caput) package (for MPI-enabled computations). 
+
+-------------------
+
 [![](https://img.shields.io/badge/arXiv-2106.09713%20-red.svg)](https://arxiv.org/abs/2106.09713)
 
 # FishLSS
