@@ -1,6 +1,6 @@
 # HI fork of FishLSS
 
-This is a version of FishLSS that has been heavily modified to perform the 21cm intensity mapping forecasts contained in [https://arxiv.org/abs/YYYY.XXXX](https://arxiv.org/abs/YYYY.XXXXX). See below for the original readme.
+This is a version of FishLSS that has been heavily modified to perform the 21cm intensity mapping forecasts contained in [https://arxiv.org/abs/2405.18559](https://arxiv.org/abs/2405.18559). See below for the original readme.
 
 In addition to the requirements below, this version of FishLSS also requires the [caput](https://github.com/radiocosmology/caput) and [mpi4py](https://github.com/mpi4py/mpi4py/) packages (for MPI-enabled computations). To use this fork, you'll want to checkout the `HI` branch and then perform an in-place pip install:
 ```
